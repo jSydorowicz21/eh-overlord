@@ -22,21 +22,21 @@ Radiant Troll is a Discord bot designed to engage with users through witty and h
 ### Installation
 
 1. Clone the repository:
-   ```\n   git clone <repository-url>\n   ```
+   ```git clone <repository-url>```
 2. Install dependencies:
-   ```\n   npm install\n   ```
+   ```npm install ```
 3. Create a `.env` file in the root directory and add your Discord bot token and OpenAI API key:
-   ```\n   BOT_TOKEN=your_bot_token_here \n   OPENAI_API_KEY=your_openai_api_key_here\n   ```
+   ```DISCORD_BOT_TOKEN=your_bot_token_here OPENAI_API_KEY=your_openai_api_key_here```
 
 ### Running the Bot
 
 Run the bot using Node.js:
-```\nnode trollbot.js\n```
+```node trollbot.js```
 
 ## Usage
 
 After inviting the bot to your Discord server and running it, you can interact with it by mentioning it in a message:
-```\n@RadiantTroll What do you think of @user?\n```
+```@RadiantTroll What do you think of @user?```
 Radiant Troll will process the mention and respond based on its programming and the context provided.
 
 ## Contributing
