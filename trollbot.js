@@ -2,6 +2,8 @@ const Discord = require("discord.js");
 const OpenAI = require("openai");
 const winston = require("winston");
 require('dotenv').config();
+
+// Create a new Discord client
 const client = new Discord.Client({intents: [
         Discord.Intents.FLAGS.GUILDS,
         Discord.Intents.FLAGS.GUILD_MESSAGES,
@@ -9,6 +11,7 @@ const client = new Discord.Client({intents: [
     ],
     partials: ['MESSAGE', 'CHANNEL']});
 
+// Logger
 const logger = winston.createLogger({
     level: 'info',
     format: winston.format.json(),
@@ -19,21 +22,21 @@ const logger = winston.createLogger({
     ],
 });
 
-const version = '2.2.5';
+const version = '2.2.6';
 
-
-// Replace 'YOUR_BOT_TOKEN' with your actual bot token
+// Pulls Environment Variables
 const botToken = process.env.DISCORD_BOT_TOKEN;
 const openAiApiKey = process.env.OPENAI_API_KEY;
 
-// The user ID of the user to respond to
+// The user ID of the users who have special interactions with the bot
 const tekki = '534548787516014607';
 const spence = '374799961868468224';
 const myId = '138673796675534848';
 const chris = '611968137776070720';
 
+// Tekki Burns
 let tekkiCounter = 0;
-let tekkiBurns = 13;
+let tekkiBurns = 15;
 
 const openai = new OpenAI({ apiKey: openAiApiKey });
 
@@ -42,41 +45,52 @@ const blowKiss = '1204901209912250369';
 const wompwomp = '1204270434447523890';
 const catDance = '1191952299661197404';
 
+// When the bot is ready, log to the console
 client.on('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
 });
 
+// When the bot receives a message
 client.on('messageCreate', async (message) => {
+    // Check if the message is a mention from a user and not from a bot
     if (message.mentions.users.has(client.user.id) && !message.author.bot) {
+        // Check if tekki sent the message
         if (message.author.id === tekki) {
             tekkiCounter++;
             tekkiBurns++;
             await message.react(wompwomp);
         }
+        // Check if spence sent the message
         if (message.author.id === spence) {
             await message.react(catDance);
         }
+        // Check if chris sent the message
         if (message.author.id === chris){
             await message.react(blowKiss);
         }
+        // Then send a burn
         await sendBurn(message);
     }
+    // Check if tekki sent the message
     else if (message.author.id === tekki) {
         await message.react(wompwomp);
         tekkiCounter++;
+        // If tekki has messaged 7 times, send a random response burn
         if (tekkiCounter >= 7) {
             tekkiBurns++;
             await sendBurn(message);
             tekkiCounter = 0;
         }
     }
+    // Check if spence sent the message
     if (message.author.id === spence) {
         await message.react(catDance);
     }
+    // Check if chris sent the message
     else if (message.author.id === chris){
         await message.react(blowKiss);
     }
-    // Check if the message is from the target user and not from a bot
+    // Check if the message is a command
     if (message.content.includes("!tekki")) {
         try {
             await message.reply("Tekki has been burned " + tekkiBurns + " times.");
@@ -106,8 +120,9 @@ client.on('messageCreate', async (message) => {
     }
 });
 
+// Function to get the prompt for the user
 function getPromptForUser(userId, userName, cleanedMessage){
-    // Construct the prompt
+    // Construct the base prompt
     let prompt = {
         model: "gpt-4",
         messages: [
@@ -149,6 +164,7 @@ function getPromptForUser(userId, userName, cleanedMessage){
             },
         ]
     };
+    // Add user-specific messages
     if (userId === spence) {
         prompt.messages.push(...[
             // System messages specific to 'spence'
@@ -187,6 +203,7 @@ function getPromptForUser(userId, userName, cleanedMessage){
             }
         ]);
     }
+    // Add default messages
     else {
         prompt.messages.push(
             {
@@ -210,10 +227,12 @@ function getPromptForUser(userId, userName, cleanedMessage){
     return prompt;
 }
 
+// Function to replace mentions with names
 async function replaceMentionsWithNames(message) {
     let content = message.content;
     const mentions = message.mentions.users;
 
+    // Replace each mention with the user's name
     for (const [userId, user] of mentions) {
         let name = user.username; // Default to username
         const member = await message.guild.members.fetch(userId).catch(console.error);
@@ -227,6 +246,7 @@ async function replaceMentionsWithNames(message) {
     return content;
 }
 
+// Function to get the user's name
 async function getUserName(message) {
     let userName;
     // Fetch the original message that was replied to
@@ -252,6 +272,7 @@ async function getUserName(message) {
     return userName;
 }
 
+// Function to send a burn
 async function sendBurn(message){
     try {
         const cleanedMessage = await replaceMentionsWithNames(message);
@@ -264,8 +285,7 @@ async function sendBurn(message){
         const response = await openai.chat.completions.create(prompt);
         const reply = response.choices[0].message.content.trim();
 
-        logger.info('user: ' + userName + ' message: ' + cleanedMessage + ' reply: ' + reply);
-        logger.info('prompt: ' + JSON.stringify(prompt));
+        // Send the reply
         await message.reply(reply);
 
     } catch (error) {
@@ -274,6 +294,7 @@ async function sendBurn(message){
     }
 }
 
+// Function to pick a random agent
 function pickAgent() {
     const agents = [
         "Astra",
@@ -303,6 +324,4 @@ function pickAgent() {
     return agents[Math.floor(Math.random() * agents.length)];
 }
 
-
-
-    client.login(botToken);
+client.login(botToken);
