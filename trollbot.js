@@ -19,7 +19,7 @@ const logger = winston.createLogger({
     ],
 });
 
-const version = '2.2.3';
+const version = '2.2.5';
 
 
 // Replace 'YOUR_BOT_TOKEN' with your actual bot token
@@ -239,13 +239,15 @@ async function getUserName(message) {
             // You can now handle this as a mention or reply to the bot
 
             // Fetch user information if needed, e.g., for replies mentioning the bot indirectly
-            let userName = message.member ? (message.member.nickname || message.author.username) : message.author.username;
+            userName = message.member ? (message.member.nickname || message.author.username) : message.author.username;
 
             // Example response or logic here
             console.log(`${userName} replied to the bot's message.`);
         }
     }
-    userName = message.member ? (message.member.nickname || message.author.username) : message.author.username;
+    else {
+        userName = message.member ? (message.member.nickname || message.author.username) : message.author.username;
+    }
 
     return userName;
 }
