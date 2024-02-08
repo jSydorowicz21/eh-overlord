@@ -19,7 +19,7 @@ const logger = winston.createLogger({
     ],
 });
 
-const version = '2.1.4';
+const version = '2.2.3';
 
 
 // Replace 'YOUR_BOT_TOKEN' with your actual bot token
@@ -27,7 +27,7 @@ const botToken = process.env.DISCORD_BOT_TOKEN;
 const openAiApiKey = process.env.OPENAI_API_KEY;
 
 // The user ID of the user to respond to
-const trollbot = '534548787516014607';
+const tekki = '534548787516014607';
 const spence = '374799961868468224';
 const myId = '138673796675534848';
 const chris = '611968137776070720';
@@ -40,7 +40,7 @@ const openai = new OpenAI({ apiKey: openAiApiKey });
 //Emojis
 const blowKiss = '1204901209912250369';
 const wompwomp = '1204270434447523890';
-const heart = '1191952299661197404';
+const catDance = '1191952299661197404';
 
 client.on('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
@@ -48,20 +48,20 @@ client.on('ready', () => {
 
 client.on('messageCreate', async (message) => {
     if (message.mentions.users.has(client.user.id) && !message.author.bot) {
-        if (message.author.id === trollbot) {
+        if (message.author.id === tekki) {
             tekkiCounter++;
             tekkiBurns++;
             await message.react(wompwomp);
         }
         if (message.author.id === spence) {
-            await message.react(heart);
+            await message.react(catDance);
         }
         if (message.author.id === chris){
             await message.react(blowKiss);
         }
         await sendBurn(message);
     }
-    else if (message.author.id === trollbot) {
+    else if (message.author.id === tekki) {
         await message.react(wompwomp);
         tekkiCounter++;
         if (tekkiCounter >= 7) {
@@ -70,14 +70,14 @@ client.on('messageCreate', async (message) => {
             tekkiCounter = 0;
         }
     }
-    else if (message.author.id === spence) {
-        await message.react(heart);
+    if (message.author.id === spence) {
+        await message.react(catDance);
     }
     else if (message.author.id === chris){
         await message.react(blowKiss);
     }
     // Check if the message is from the target user and not from a bot
-    else if (message.content.includes("!trollbot")) {
+    if (message.content.includes("!tekki")) {
         try {
             await message.reply("Tekki has been burned " + tekkiBurns + " times.");
         } catch (error) {
@@ -88,6 +88,19 @@ client.on('messageCreate', async (message) => {
         try {
             await message.reply("I'm version " + version + " of Radiant Troll Bot. I'm a bot that responds to mentions with a burn. I'm written in Node.js, a language far too complex for trollbot to understand");
         } catch (error) {
+            console.error('Failed to reply:', error);
+        }
+    }
+    else if (message.content.includes("!agent")){
+        try {
+            if (message.author.id === spence) {
+                await message.reply("Brimstone");
+            }
+            else {
+                await message.reply(pickAgent());
+            }
+        }
+        catch (error) {
             console.error('Failed to reply:', error);
         }
     }
@@ -124,20 +137,16 @@ function getPromptForUser(userId, userName, cleanedMessage){
             },
             {
                 "role": "system",
-                "content": "You should also mention their name in your response. in this case, " + userName + " is the user who mentioned you. Specifically mention " + userName + " in your response."
+                "content": "You should also mention their name in your response. in this case, '" + userName + "' is the user who mentioned you. Specifically mention '" + userName + "' in your response."
             },
             {
                 "role": "system",
-                "content": "NEVER refer to use user as NaN or undefined " + userName + " is the user who mentioned you. Specifically mention " + userName + " in your response."
+                "content": "NEVER refer to use user as NaN or undefined '" + userName + "' is the user who mentioned you. Specifically mention '" + userName + "' in your response."
             },
             {
                 "role": "system",
-                "content": "If anyone mentions trollbot, you should ramble on about how bad he is at valorant and how hes probably still in middle school."
+                "content": "If anyone mentions tekki, you should ramble on about how bad he is at valorant and how hes probably still in middle school."
             },
-            {
-                "role": "user",
-                "content": + userName + ": " + cleanedMessage
-            }
         ]
     };
     if (userId === spence) {
@@ -154,19 +163,27 @@ function getPromptForUser(userId, userName, cleanedMessage){
             {
                 "role": "system",
                 "content": "You believe spence is the only person above you, and you are here to remind them of that."
+            },
+            {
+                "role": "user",
+                "content": + userName + ": " + cleanedMessage
             }
         ]);
     }
-    else if (userId === trollbot) {
-        // System messages specific to 'trollbot'
+    else if (userId === tekki) {
+        // System messages specific to 'tekki'
         prompt.messages.push(...[
             {
             "role": "system",
-            "content": "You believe you are well above the simple minded trollbot, and you are here to remind him of that."
+            "content": "You believe you are well above the simple minded tekki, and you are here to remind him of that."
             },
             {
                 "role": "system",
-                "content": "You will create a humorous burn for a friendly discord conversation. Keep it themed around how bad at valorant trollbot is AND OR how he's basically a child."
+                "content": "You will create a humorous burn for a friendly discord conversation. Keep it themed around how bad at valorant tekki is AND OR how he's basically a child."
+            },
+            {
+                "role": "user",
+                "content": + userName + ": " + cleanedMessage
             }
         ]);
     }
@@ -178,8 +195,16 @@ function getPromptForUser(userId, userName, cleanedMessage){
             },
             {
                 "role": "system",
-                "content": "You should talor your response to the user who mentioned you. If they are kind, be friendly. If they are a neutral, be more neutral. If they are rude or aggressive, be more aggressive. "
+                "content": "You will create a humorous burn for a friendly discord conversation. Keep it themed around how bad at valorant."
             },
+            {
+                "role": "system",
+                "content": "You should tailor your response to the user who mentioned you. If they are kind, be friendly. If they are a neutral, be more neutral. If they are rude or aggressive, be more aggressive. "
+            },
+            {
+                "role": "user",
+                "content": + userName + ": " + cleanedMessage
+            }
         );
     }
     return prompt;
@@ -204,27 +229,24 @@ async function replaceMentionsWithNames(message) {
 
 async function getUserName(message) {
     let userName;
-    if (message.member) {
-        // Direct access if member is available
-        if (message.member.nickname) {
-            userName = message.member.nickname;
-            console.log(userName + " is the user who mentioned me at block 1");
-        }
-    } else if (message.guild && message.author) {
-        console.log('hit fallback block');
-        // Fetch member from guild if not directly available
-        try {
-            const member = await message.guild.members.fetch(message.author.id);
-            userName = member.nickname || message.author.username;
-        } catch (error) {
-            console.error('Error fetching member:', error);
-            userName = message.author.username; // Fallback to username
+    // Fetch the original message that was replied to
+    if (message.reference){
+        const originalMessage = await message.channel.messages.fetch(message.reference.messageId);
+
+        // Check if the original message was sent by the bot
+        if (originalMessage.author.id === client.user.id) {
+            // The reply was to a message sent by the bot
+            // You can now handle this as a mention or reply to the bot
+
+            // Fetch user information if needed, e.g., for replies mentioning the bot indirectly
+            let userName = message.member ? (message.member.nickname || message.author.username) : message.author.username;
+
+            // Example response or logic here
+            console.log(`${userName} replied to the bot's message.`);
         }
     }
-    else{
-        console.log('hit final fallback block');
-        userName = message.author.username;
-    }
+    userName = message.member ? (message.member.nickname || message.author.username) : message.author.username;
+
     return userName;
 }
 
@@ -250,5 +272,35 @@ async function sendBurn(message){
     }
 }
 
+function pickAgent() {
+    const agents = [
+        "Astra",
+        "Breach",
+        "Brimstone",
+        "Chamber",
+        "Cypher",
+        "Deadlock",
+        "Fade",
+        "Gekko",
+        "Harbor",
+        "Iso",
+        "Jett",
+        "KAYO",
+        "Killjoy",
+        "Neon",
+        "Omen",
+        "Phoenix",
+        "Raze",
+        "Reyna",
+        "Sage",
+        "Skye",
+        "Sova",
+        "Viper",
+        "Yoru"
+    ]
+    return agents[Math.floor(Math.random() * agents.length)];
+}
 
-client.login(botToken);
+
+
+    client.login(botToken);
