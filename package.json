@@ -1,8 +1,8 @@
 {
-  "name": "radiant-troll",
-  "version": "2.2.6",
+  "name": "eh-overlord",
+  "version": "1.0",
   "description": "",
-  "main": "tekki.js",
+  "main": "bot.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -10,9 +10,18 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "discord.js": "^13.1.0",
-    "dotenv": "^16.4.1",
-    "openai": "^4.26.1",
+    "@discordjs/rest": "^2.3.0",
+    "@extra/proxy-router": "^3.1.6",
+    "axios": "^1.7.2",
+    "discord-api-types": "^0.37.91",
+    "discord.js": "^14.15.3",
+    "dotenv": "^16.4.5",
+    "mongoose": "^8.4.4",
+    "openai": "^4.52.2",
+    "puppeteer": "^22.12.1",
+    "puppeteer-core": "^22.12.1",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "winston": "^3.11.0"
   }
 }
