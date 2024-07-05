@@ -164,6 +164,22 @@ const commands = [
         ]
     },
     {
+        name: 'list_teams',
+        description: 'List all teams with their captains and players',
+    },
+    {
+        name: 'get_player_info',
+        description: 'Get detailed information about a specific player',
+        options: [
+            {
+                type: 6,
+                name: 'discord_id',
+                description: 'The Discord ID of the player',
+                required: true
+            }
+        ]
+    },
+    {
         name: 'staff',
         description: 'Staff level commands',
         options: [
@@ -195,7 +211,13 @@ const commands = [
                         name: 'team_channel',
                         description: 'The channel to set for the team',
                         required: true
-                    }
+                    },
+                    {
+                        type: 8,
+                        name: 'team_role',
+                        description: 'The role to assign to the team',
+                        required: true
+                    },
                 ]
             },
             {
@@ -280,9 +302,9 @@ const commands = [
                 description: 'Remove a player from the team',
                 options: [
                     {
-                        type: 3,
-                        name: 'player_id',
-                        description: 'The ID of the player',
+                        type: 6,
+                        name: 'player_discord_id',
+                        description: 'The Discord ID of the player',
                         required: true
                     },
                     {
@@ -292,9 +314,53 @@ const commands = [
                         required: true
                     }
                 ]
+            },
+            {
+                type: 1,
+                name: 'update_team_info',
+                description: 'Update team information',
+                options: [
+                    {
+                        type: 3,
+                        name: 'team_name',
+                        description: 'The name of the team',
+                        required: true
+                    },
+                    {
+                        type: 3,
+                        name: 'new_team_name',
+                        description: 'The new name of the team',
+                        required: false
+                    },
+                    {
+                        type: 6,
+                        name: 'new_captain_discord_id',
+                        description: 'The Discord ID of the new team captain',
+                        required: false
+                    }
+                ]
+            },
+            {
+                type: 1,
+                name: 'set_team_role',
+                description: 'Set the role for a team',
+                options: [
+                    {
+                        type: 3,
+                        name: 'team_name',
+                        description: 'The name of the team',
+                        required: true
+                    },
+                    {
+                        type: 8,
+                        name: 'role_id',
+                        description: 'The role to assign to the team',
+                        required: true
+                    }
+                ]
             }
         ]
-    }
+    },
 // {
     //     name: 'start_prediction',
     //     description: 'Start a new prediction',
@@ -449,6 +515,36 @@ client.on('interactionCreate', async (interaction) => {
         }
     }
 
+    if (interaction.commandName === 'list_teams') {
+        try {
+            await interaction.deferReply(); // Acknowledge interaction
+            const teams = await db.getTeams();
+            const teamInfo = teams.map(team =>
+                `**${team.name}** (Captain: ${team.captain})\nPlayers: ${team.players.map(player => player.riotId).join(', ')}`
+            ).join('\n\n');
+            await interaction.editReply(teamInfo || 'No teams found.');
+        } catch (error) {
+            console.error('Failed to list teams:', error);
+            await interaction.editReply('There was an error listing the teams.');
+        }
+    }
+
+    if (interaction.commandName === 'get_player_info') {
+        try {
+            await interaction.deferReply(); // Acknowledge interaction
+            const playerDiscordId = interaction.options.getUser('discord_id').id;
+            const player = await db.getPlayerByDiscordId(playerDiscordId);
+            if (player) {
+                await interaction.editReply(`**${player.name}**\nRiot ID: ${player.riotId}\nTeam: ${player.team ? player.team.name : 'None'}`);
+            } else {
+                await interaction.editReply('Player not found.');
+            }
+        } catch (error) {
+            console.error('Failed to get player info:', error);
+            await interaction.editReply('There was an error getting the player info.');
+        }
+    }
+
     if (interaction.commandName === 'staff') {
         const subcommand = interaction.options.getSubcommand();
 
@@ -465,6 +561,14 @@ client.on('interactionCreate', async (interaction) => {
                 const teamChannel = interaction.options.getChannel('team_channel');
                 const teamRole = interaction.options.getRole('team_role');
                 const team = await db.createTeam(teamName, captainDiscordId, captainName, teamChannel.id, teamRole.id);
+
+                // Assign team role to captain
+                const guild = interaction.guild;
+                const member = guild.members.cache.get(captainDiscordId);
+                if (member) {
+                    await member.roles.add(guild.roles.cache.get(teamRole.id));
+                }
+
                 await interaction.editReply(`Team ${teamName} has been created with ${captainName} as the captain.`);
             } catch (error) {
                 console.error('Failed to create team:', error);
@@ -481,6 +585,17 @@ client.on('interactionCreate', async (interaction) => {
                 await interaction.deferReply(); // Acknowledge interaction
                 const captainId = interaction.options.getUser('captain_discord_id').id;
                 const team = await deleteTeam(captainId);
+
+                // Remove team role from all team members
+                const guild = interaction.guild;
+                const teamRoleId = team.teamRoleId;
+                const members = await guild.members.fetch();
+                members.forEach(async member => {
+                    if (member.roles.cache.has(teamRoleId)) {
+                        await member.roles.remove(guild.roles.cache.get(teamRoleId));
+                    }
+                });
+
                 await interaction.editReply(`Team ${team.name} has been deleted.`);
             } catch (error) {
                 console.error('Failed to delete team:', error);
@@ -515,6 +630,15 @@ client.on('interactionCreate', async (interaction) => {
                 const newCaptainDiscord = interaction.options.getUser('captain_discord_id');
                 const teamName = interaction.options.getString('team_name');
                 await setCaptain(newCaptainDiscord, teamName);
+
+                // Assign team role to new captain
+                const guild = interaction.guild;
+                const member = guild.members.cache.get(newCaptainDiscord.id);
+                const team = await db.getTeamByCaptain(newCaptainDiscord.id);
+                if (member && team) {
+                    await member.roles.add(guild.roles.cache.get(team.teamRoleId));
+                }
+
                 await interaction.editReply(`Captain ${newCaptainDiscord.displayName} set for team ${teamName}`);
             } catch (error) {
                 console.error('Failed to set captain:', error);
@@ -533,8 +657,18 @@ client.on('interactionCreate', async (interaction) => {
                 const discordId = interaction.options.getUser('discord_id').id;
                 const playerName = riotId.split('#')[0];
                 const captainDiscordId = interaction.options.getUser('captain_discord_id').id;
-                await db.addPlayerToTeam(riotId, discordId, playerName, captainDiscordId);
-                await interaction.editReply(`Player ${playerName} added to the team.`);
+                const player = await db.addPlayerToTeam(riotId, discordId, playerName, captainDiscordId);
+
+                // Assign team role to the player
+                const guild = interaction.guild;
+                const member = guild.members.cache.get(discordId);
+                if (member) {
+                    const role = guild.roles.cache.get(player.team.teamRoleId)
+                    await member.roles.add(role);
+                }
+
+                const nickName = member ? member.displayName : playerName;
+                await interaction.editReply(`Player ${nickName} added to the team.`);
             }
             catch (error) {
                 console.error('Failed to add player:', error);
@@ -543,39 +677,73 @@ client.on('interactionCreate', async (interaction) => {
         }
 
         if (subcommand === 'override_remove'){
-            try{
+            try {
                 if (!checkAccess(interaction, 'staff')) {
                     await interaction.reply('You do not have permission to use this command.');
                     return;
                 }
                 await interaction.deferReply(); // Acknowledge interaction
-                const playerId = interaction.options.getString('player_id');
+                const playerDiscordId = interaction.options.getUser('player_discord_id').id;
                 const captainDiscordId = interaction.options.getUser('captain_discord_id').id;
-                await db.removePlayerFromTeam(playerId, captainDiscordId);
-                await interaction.editReply(`Player removed from the team.`);
-            }
-            catch (error) {
+                const response = await db.removePlayerFromTeam(playerDiscordId, captainDiscordId);
+
+                // Find the guild member
+                const guild = interaction.guild;
+                const member = guild.members.cache.get(response.player.discordId);
+
+                if (member) {
+                    // Remove the team role from the player
+                    const teamRoleId = response.team.teamRoleId;
+                    const role = guild.roles.cache.get(teamRoleId);
+                    if (role) await member.roles.remove(role);
+                }
+
+                const nickName = member ? member.displayName : response.player.name;
+                await interaction.editReply(`Player ${nickName} removed from the team.`);
+            } catch (error) {
                 console.error('Failed to remove player:', error);
                 await interaction.editReply(`There was an error removing the player. <@138673796675534848>, please check the logs.`);
             }
         }
-    }
 
-    // Uncomment and modify the following block for 'start_prediction' command handling
-    // if (interaction.commandName === 'start_prediction') {
-    //     if (!checkAccess(interaction)) {
-    //         await interaction.reply('You do not have permission to use this command.');
-    //         return;
-    //     }
-    //     await interaction.deferReply(); // Acknowledge interaction
-    //     const question = interaction.options.getString('question');
-    //     const options = interaction.options.getString('options').split(',');
-    //     const predictionId = predictions.length;
-    //     predictions.push({ question, options, status: 'open' });
-    //     savePredictions();
-    //     await interaction.editReply(`Prediction started! ID: ${predictionId}`);
-    // }
+        if (subcommand === 'update_team_info') {
+            try {
+                if (!checkAccess(interaction, 'staff')) {
+                    await interaction.reply('You do not have permission to use this command.');
+                    return;
+                }
+                await interaction.deferReply(); // Acknowledge interaction
+                const teamName = interaction.options.getString('team_name');
+                const newTeamName = interaction.options.getString('new_team_name');
+                const newCaptainDiscordId = interaction.options.getUser('new_captain_discord_id').id;
+                await db.updateTeamInfo(teamName, newTeamName, newCaptainDiscordId);
+                await interaction.editReply(`Team info updated for ${teamName}`);
+            } catch (error) {
+                console.error('Failed to update team info:', error);
+                await interaction.editReply('There was an error updating the team info.');
+            }
+        }
+
+        if (subcommand === 'set_team_role') {
+            try {
+                if (!checkAccess(interaction, 'staff')) {
+                    await interaction.reply('You do not have permission to use this command.');
+                    return;
+                }
+                await interaction.deferReply(); // Acknowledge interaction
+                const teamName = interaction.options.getString('team_name');
+                const roleId = interaction.options.getRole('role_id').id;
+                await db.assignTeamRole(teamName, roleId);
+                await interaction.editReply(`Role assigned to team ${teamName}`);
+            } catch (error) {
+                console.error('Failed to assign team role:', error);
+                await interaction.editReply('There was an error assigning the team role.');
+            }
+        }
+    }
 });
+
+
 
 function checkAccess(interaction, type) {
     const allowedChannelIds = ['1239378714907770982', '1239378714907770982', '1160694040887578664'];

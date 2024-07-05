@@ -59,23 +59,92 @@ node bot.js
 ```
 
 ## Commands
-### General Commands
 
-- `/check riot_id`: Check if a player is likely a smurf.
-- `/add_player riot_id discord_id`: Add a player to the team.
-- `/remove_player riot_id`: Remove a player from the team.
-- `/send_voting_message`: Send a voting message to a specific channel.
-- `/team player_discord_id`: Display team information.
-- `/request_sub riot_id discord_id riot_id_being_replaced day time`: Request a substitute player.
+### General Commands
+- `/check`
+  - Description: Check if a player is likely a smurf.
+  - Options:
+    - `riot_id` (STRING): The Riot ID of the player (e.g., username#tagline).
+
+- `/add_player`
+  - Description: Add a player to the team.
+  - Options:
+    - `riot_id` (STRING): The Riot ID of the player (e.g., username#tagline).
+    - `discord_id` (USER): The Discord ID of the player.
+
+- `/remove_player`
+  - Description: Remove a player from the team.
+  - Options:
+    - `riot_id` (STRING): The Riot ID of the player (e.g., username#tagline).
+
+- `/send_voting_message`
+  - Description: Send a voting message to a specific channel.
+
+- `/team`
+  - Description: Display team information.
+  - Options:
+    - `player_discord_id` (USER): The Discord ID of the player.
+
+- `/list_teams`
+  - Description: List all teams and their players.
+
+- `/get_player_info`
+  - Description: Get information about a player.
+  - Options:
+    - `discord_id` (USER): The Discord ID of the player.
 
 ### Staff Commands
+- `/staff create_team`
+  - Description: Create a new team.
+  - Options:
+    - `team_name` (STRING): The name of the team.
+    - `captain_name` (STRING): The name of the team captain.
+    - `captain_discord_id` (USER): The Discord ID of the team captain.
+    - `team_channel` (CHANNEL): The channel to set for the team.
+    - `team_role` (ROLE): The role to set for the team.
 
-- `/staff create_team team_name captain_name captain_discord_id team_channel`: Create a new team.
-- `/staff delete_team captain_discord_id`: Delete a team.
-- `/staff set_team_channel team_name channel_id`: Set the channel for the team.
-- `/staff set_captain captain_discord_id team_name`: Set a new captain for the team.
-- `/staff override_add riot_id discord_id captain_discord_id`: Add a player to the team.
-- `/staff override_remove player_id captain_discord_id`: Remove a player from the team.
+- `/staff delete_team`
+  - Description: Delete a team.
+  - Options:
+    - `captain_discord_id` (USER): The Discord ID of the team captain.
+
+- `/staff set_team_channel`
+  - Description: Set the channel for the team.
+  - Options:
+    - `team_name` (STRING): The name of the team.
+    - `channel_id` (CHANNEL): The channel to set for the team.
+
+- `/staff set_captain`
+  - Description: Set a new captain for the team.
+  - Options:
+    - `captain_discord_id` (USER): The Discord ID of the new team captain.
+    - `team_name` (STRING): The name of the team.
+
+- `/staff override_add`
+  - Description: Add a player to the team.
+  - Options:
+    - `riot_id` (STRING): The Riot ID of the player.
+    - `discord_id` (USER): The Discord ID of the player.
+    - `captain_discord_id` (USER): The Discord ID of the team captain.
+
+- `/staff override_remove`
+  - Description: Remove a player from the team.
+  - Options:
+    - `player_discord_id` (USER): The Discord ID of the player.
+    - `captain_discord_id` (USER): The Discord ID of the team captain.
+
+- `/staff update_team_info`
+  - Description: Update team information.
+  - Options:
+    - `team_name` (STRING): The current name of the team.
+    - `new_team_name` (STRING): The new name for the team.
+    - `new_captain_discord_id` (USER): The Discord ID of the new team captain.
+
+- `/staff set_team_role`
+  - Description: Assign a role to the team.
+  - Options:
+    - `team_name` (STRING): The name of the team.
+    - `role_id` (ROLE): The role to assign to the team.
 
 ## License
 

@@ -66,6 +66,7 @@ const db = {
             await team.save();
             player.team = team.id;
             await player.save();
+            await player.populate('team');
             return player;
         } else {
             const player = new Player({
@@ -77,7 +78,7 @@ const db = {
             await player.save();
             team.players.push(player.id);
             await team.save();
-
+            await player.populate('team');
             return player;
         }
     },
@@ -98,13 +99,17 @@ const db = {
         await team.save();
     },
 
-    removePlayerFromTeam: async (riotId, captainId) => {
+    removePlayerFromTeam: async (playerDiscordId, captainId) => {
         const team = await Team.findOne({captainDiscordId: captainId}).populate('players');
-        team.players = team.players.filter(p => p.riotId !== riotId);
+        team.players = team.players.filter(p => p.discordId !== playerDiscordId);
         await team.save();
-        const player = await Player.findOne({riotId: riotId});
+        const player = await Player.findOne({discordId: playerDiscordId});
         player.team = null;
         await player.save();
+        return {
+            team: team,
+            player: player
+        };
     },
 
     deleteTeam: async (captainId) => {
@@ -114,6 +119,27 @@ const db = {
         }
         await Player.deleteMany({team: team._id});
         return team;
+    },
+
+    getPlayerByDiscordId: async (discordId) => {
+        return Player.findOne({ discordId }).populate('team');
+    },
+
+    updateTeamInfo: async (teamName, newTeamName, newCaptainDiscordId) => {
+        const team = await Team.findOne({ name: teamName });
+        if (team) {
+            team.name = newTeamName;
+            team.captainDiscordId = newCaptainDiscordId;
+            await team.save();
+        }
+    },
+
+    assignTeamRole: async (teamName, roleId) => {
+        const team = await Team.findOne({ name: teamName });
+        if (team) {
+            team.teamRoleId = roleId;
+            await team.save();
+        }
     },
 
 
