@@ -15,6 +15,9 @@ const openAiApiKey = process.env.OPENAI_API_KEY;
 const username = process.env.PROXY_USERNAME;
 const password = process.env.PROXY_PASSWORD;
 
+const valorantApiUrl = process.env.VALORANT_API_BASE_URL;
+const valorantApiKey = process.env.VALORANT_API_KEY;
+
 const proxyUrl = process.env.PROXY_URL;
 const auth = username + ":" + password;
 
@@ -23,7 +26,7 @@ const rosterChannelId = '1257511444858273793';
 const db = require('./mongoHandler');
 
 // Function to send a voting message to a specific channel
-async function sendVotingMessage(player, captain, team, stats, channelId, trackerUrl, client, type) {
+async function sendVotingMessage(player, captain, team, stats, channelId, trackerUrl, client, type, guild) {
     const channel = client.channels.cache.get(channelId);
 
     if (!channel) {
@@ -34,22 +37,37 @@ async function sendVotingMessage(player, captain, team, stats, channelId, tracke
     let description;
     let approveCustomId;
     let denyCustomId;
+    let riotReturn;
 
     if (type === 'add') {
         description = `<@${captain.id}> has requested ${player.riotId} be added to ${team.name}`;
         approveCustomId = 'approve_add';
         denyCustomId = 'deny_add';
+        riotReturn = await getUserAndRank(player.riotId);
+        if (!riotReturn) {
+            console.error('Error fetching user rank');
+            return
+        }
     } else if (type === 'remove') {
         description = `${captain.tag} has requested ${player.riotId} be removed from ${team.name}`;
         approveCustomId = 'approve_remove';
         denyCustomId = 'deny_remove';
+        player = await db.getPlayerByDiscordId(player.playerDiscordId);
+        riotReturn = await getUserAndRank(player.riotId);
+        if (!riotReturn) {
+            console.error('Error fetching user rank');
+            return
+        }
     }
+
 
     const embed = new EmbedBuilder()
         .setTitle(`# ${player.riotId}`)
         .setDescription(description)
         .addFields(
             { name: 'Tracker', value: `[View Stats](${trackerUrl})`, inline: true },
+            {name: 'Current Rank', value: riotReturn.currentRank || 'N/A', inline: true },
+            {name: 'Peak Rank', value: riotReturn.peakRank || 'N/A', inline: true },
         )
         .setURL(trackerUrl)
         .setColor(Colors.Blue);
@@ -76,15 +94,18 @@ async function sendVotingMessage(player, captain, team, stats, channelId, tracke
             // Handle approval
             if (type === 'add') {
                 await addPlayerToTeam(player.riotId, player.playerDiscordId, player.playerName, captain.id);
+                await addTeamRole(player.playerDiscordId, team.teamRoleId, guild);
             } else if (type === 'remove') {
-                await removePlayerFromTeam(player.riotId, captain.id);
+                await removePlayerFromTeam(player.playerDiscordId, captain.id);
+                await removeTeamRole(player.playerDiscordId, team.teamRoleId, guild);
             }
-            await i.update({ content: `Player ${player.riotId} has been approved to ${type === 'add' ? 'join' : 'get removed from'} ${team.name}. Please update team roles for <@${player.playerDiscordId}>`, embeds: [], components: [] });
-            client.channels.cache.get(team.teamChannelId).send(`Player ${player.riotId} has been ${type === 'add' ? 'added to' : 'removed from'} the team.`);
+            await i.update({ content: `Player ${player.riotId} has been approved to ${type === 'add' ? 'join' : 'get removed from'} ${team.name}. Please verify roles were updated for <@${player.playerDiscordId}>`, embeds: [], components: [] });
+            client.channels.cache.get(team.teamChannelId).send(`Player ${player.riotId} has been ${type === 'add' ? 'added to' : 'removed from'} the team. Roles have been updated accordingly.`);
+
         } else {
             // Handle denial
-            await i.update({ content: `Player ${player.riotId} has been denied to ${type === 'add' ? 'join' : 'get removed from'} ${team.name}. Please update team roles for <@${player.playerDiscordId}>`, embeds: [], components: [] });
-            client.channels.cache.get(team.teamChannelId).send(`Player ${player.riotId} has been denied to ${type === 'add' ? 'join' : 'be removed from'} the team.`);
+            await i.update({ content: `Player ${player.riotId} has been denied to ${type === 'add' ? 'join' : 'get removed from'} ${team.name}.`, embeds: [], components: [] });
+            client.channels.cache.get(team.teamChannelId).send(`Player ${player.riotId} has been denied to ${type === 'add' ? 'join' : 'be removed from'} the team. Roles have not been updated.`);
         }
     });
 
@@ -164,7 +185,10 @@ async function removePlayerFromTeam(playerId, captainId) {
 // Function to handle dynamic team operations
 async function handleTeamOperation(interaction, type, client) {
     await interaction.deferReply(); // Acknowledge interaction
-    const playerId = interaction.options.getString('riot_id');
+    let playerId = interaction.options.getString('riot_id');
+    if (type === 'remove') {
+        playerId = (await db.getPlayerByDiscordId(interaction.options.getUser('discord_id').id)).riotId;
+    }
     const captain = interaction.user;
     const team = (await db.getTeamByCaptain(interaction.user.id));
     if (!team) {
@@ -182,12 +206,30 @@ async function handleTeamOperation(interaction, type, client) {
         }
     }
     else if (type === 'remove') {
-        player = { riotId: playerId };
+        player = { riotId: playerId, playerDiscordId: interaction.options.getUser('discord_id').id};
     }
     const trackerUrl = `https://tracker.gg/valorant/profile/riot/${encodeURIComponent(playerId)}/overview?season=all`;
-
-    await sendVotingMessage(player, captain, team, stats, rosterChannelId, trackerUrl, client, type);
+    const guild = client.guilds.cache.get(interaction.guildId);
+    await sendVotingMessage(player, captain, team, stats, rosterChannelId, trackerUrl, client, type, guild);
     await interaction.editReply(`Request to ${type} player ${playerId} has been sent for approval.`);
+}
+
+// Function to add the team role to a user
+async function addTeamRole(playerId, teamRoleId, guild) {
+    const member = guild.members.cache.get(playerId);
+    const role = guild.roles.cache.get(teamRoleId);
+    if (member && role) {
+        await member.roles.add(role);
+    }
+}
+
+// Function to remove the team role from a user
+async function removeTeamRole(playerId, teamRoleId, guild) {
+    const member = guild.members.cache.get(playerId);
+    const role = guild.roles.cache.get(teamRoleId);
+    if (member && role) {
+        await member.roles.remove(role);
+    }
 }
 
 // Function to set a team captain
@@ -197,8 +239,7 @@ async function setCaptain(captain, teamName) {
 
 // Function to delete a team
 async function deleteTeam(captainId) {
-    const team = await db.deleteTeam(captainId)
-    return team;
+    return await db.deleteTeam(captainId);
 }
 
 async function sendTestMessage(client){
@@ -216,6 +257,67 @@ async function sendTestMessage(client){
     await sendVotingMessage(playerId, 'Captain', 'Team Name', stats, channelId, trackerUrl, client, 'add');
 }
 
+// Function to get Player UID
+async function getPlayerUID(name, tag) {
+    if (!valorantApiUrl || !valorantApiKey) {
+        console.error('Valorant API base URL not found.');
+        return null;
+    }
+    const apiUrl = `${valorantApiUrl}/v1/account/${encodeURIComponent(name)}/${encodeURIComponent(tag)}?force=true`;
+    try {
+        const response = await fetch(apiUrl, {
+            headers: {
+                Authorization: valorantApiKey,
+            }
+        });
+        const json = await response.json();
+        if (json.status === 200 && json.data) {
+            return json.data.puuid;
+        } else {
+            console.error(`Player not found or error fetching UID for ${name}#${tag}: ${response.statusText}`);
+        }
+    } catch (error) {
+        console.error(`Error fetching UID for ${name}#${tag}: ${error.toString()}`);
+    }
+    return null;
+}
+
+// Function to get User Rank
+async function getUserRank(playerUID) {
+    const apiUrl = `${valorantApiUrl}/v2/by-puuid/mmr/na/${encodeURIComponent(playerUID)}`;
+    try {
+        const response = await fetch(apiUrl, {
+            headers: {
+                Authorization: valorantApiKey,
+            }
+        });
+        const json = await response.json();
+        if (json.status === 200 && json.data) {
+            return {
+                currentRank: json.data.current_data.currenttierpatched,
+                currentRankInt: json.data.current_data.currenttier,
+                peakRank: json.data.highest_rank.patched_tier,
+                peakRankConverted: json.data.highest_rank.converted
+            };
+        } else {
+            console.error(`Rank not found or error fetching rank for UID ${playerUID}: ${response.statusText}`);
+        }
+    } catch (error) {
+        console.error(`Error fetching rank for UID ${playerUID}: ${error.toString()}`);
+    }
+    return null;
+}
+
+// Function to get User and Rank
+async function getUserAndRank(riotId) {
+    const [name, tag] = riotId.split('#');
+    const playerUID = await getPlayerUID(name, tag);
+    if (playerUID) {
+        return await getUserRank(playerUID);
+    }
+    return null;
+}
+
 // Define acts to extract
 const actsToExtract = ['E8: A3', 'E8: A2', 'E8: A1', 'E7: A3'];
 
@@ -227,5 +329,6 @@ module.exports = {
     removePlayerFromTeam,
     handleTeamOperation,
     setCaptain,
-    deleteTeam
+    deleteTeam,
+    getUserAndRank
 }

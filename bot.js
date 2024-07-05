@@ -13,12 +13,13 @@ const {Routes} = require("discord-api-types/v10");
 const {ButtonStyle} = require("discord-api-types/v10");
 require('dotenv').config();
 const db = require('./src/mongoHandler');
-const {sendTestMessage, fetchPlayerStats, handleTeamOperation, deleteTeam, setCaptain} = require("./src/playerHandler");
+const {sendTestMessage, fetchPlayerStats, handleTeamOperation, deleteTeam, setCaptain, getUserAndRank} = require("./src/playerHandler");
 
 // Pulls Environment Variables
 const botToken = process.env.DISCORD_BOT_TOKEN;
 const openAiApiKey = process.env.OPENAI_API_KEY;
 const mongoUri = process.env.MONGODB_URI;
+
 
 // const mongoUri = process.env.MONGO_URI; // MongoDB connection URI
 
@@ -120,9 +121,9 @@ const commands = [
         description: 'Remove a player from the team',
         options: [
             {
-                type: 3,
-                name: 'riot_id',
-                description: 'The Riot ID of the player (e.g., username#tagline)',
+                type: 6,
+                name: 'discord_id',
+                description: 'The Discord ID of the player',
                 required: true
             }
         ]
@@ -175,6 +176,18 @@ const commands = [
                 type: 6,
                 name: 'discord_id',
                 description: 'The Discord ID of the player',
+                required: true
+            }
+        ]
+    },
+    {
+        name: 'update_riot_id',
+        description: 'Update your riot ID',
+        options: [
+            {
+                type: 3,
+                name: 'new_riot_id',
+                description: 'Your new Riot ID (e.g., username#tagline)',
                 required: true
             }
         ]
@@ -358,7 +371,26 @@ const commands = [
                         required: true
                     }
                 ]
-            }
+            },
+            {
+                type: 1,
+                name: 'set_riot_id',
+                description: 'Set the Riot ID for a player',
+                options: [
+                    {
+                        type: 6,
+                        name: 'discord_id',
+                        description: 'The Discord ID of the player',
+                        required: true
+                    },
+                    {
+                        type: 3,
+                        name: 'new_riot_id',
+                        description: 'The new Riot ID of the player',
+                        required: true
+                    }
+                ]
+            },
         ]
     },
 // {
@@ -455,7 +487,7 @@ client.on('interactionCreate', async (interaction) => {
     if (!interaction.isCommand()) return;
 
     if (interaction.commandName === 'check') {
-        if (!checkAccess(interaction, 'staff')) {
+        if (!await checkAccess(interaction, 'staff')) {
             await interaction.reply('You do not have permission to use this command.');
             return;
         }
@@ -473,7 +505,7 @@ client.on('interactionCreate', async (interaction) => {
 
     if (interaction.commandName === 'add_player' || interaction.commandName === 'remove_player') {
         try {
-            if (!checkAccess(interaction, 'captain')) {
+            if (!await checkAccess(interaction, 'captain')) {
                 await interaction.reply('You do not have permission to use this command.');
                 return;
             }
@@ -486,7 +518,7 @@ client.on('interactionCreate', async (interaction) => {
     }
 
     if (interaction.commandName === 'send_voting_message') {
-        if (!checkAccess(interaction, 'staff')) {
+        if (!await checkAccess(interaction, 'staff')) {
             await interaction.reply('You do not have permission to use this command.');
             return;
         }
@@ -497,7 +529,7 @@ client.on('interactionCreate', async (interaction) => {
 
     if (interaction.commandName === 'team') {
         try {
-            if (!checkAccess(interaction, 'all')) {
+            if (!await checkAccess(interaction, 'all')) {
                 await interaction.reply('You do not have permission to use this command.');
                 return;
             }
@@ -545,12 +577,34 @@ client.on('interactionCreate', async (interaction) => {
         }
     }
 
+    if (interaction.commandName === 'update_riot_id') {
+        try {
+            if (!await checkAccess(interaction, 'player')) {
+                await interaction.reply('You do not have permission to use this command.');
+                return;
+            }
+            await interaction.deferReply(); // Acknowledge interaction
+            const newRiotId = interaction.options.getString('new_riot_id');
+            const user = await getUserAndRank(newRiotId);
+            if (!user) {
+                await interaction.editReply('Riot ID not found.');
+                return;
+            }
+            const discordId = interaction.user.id;
+            const player = await db.updateRiotId(discordId, newRiotId);
+            await interaction.editReply(`Riot ID updated for ${client.guilds.cache.get(interaction.guildId).members.cache.get(discordId).displayName}`);
+        } catch (error) {
+            console.error('Failed to update Riot ID:', error);
+            await interaction.editReply('There was an error updating the Riot ID');
+        }
+    }
+
     if (interaction.commandName === 'staff') {
         const subcommand = interaction.options.getSubcommand();
 
         if (subcommand === 'create_team') {
             try {
-                if (!checkAccess(interaction, 'staff')) {
+                if (!await checkAccess(interaction, 'staff')) {
                     await interaction.reply('You do not have permission to use this command.');
                     return;
                 }
@@ -578,7 +632,7 @@ client.on('interactionCreate', async (interaction) => {
 
         if (subcommand === 'delete_team') {
             try {
-                if (!checkAccess(interaction, 'staff')) {
+                if (!await checkAccess(interaction, 'staff')) {
                     await interaction.reply('You do not have permission to use this command.');
                     return;
                 }
@@ -605,7 +659,7 @@ client.on('interactionCreate', async (interaction) => {
 
         if (subcommand === 'set_team_channel') {
             try {
-                if (!checkAccess(interaction, 'staff')) {
+                if (!await checkAccess(interaction, 'staff')) {
                     await interaction.reply('You do not have permission to use this command.');
                     return;
                 }
@@ -622,7 +676,7 @@ client.on('interactionCreate', async (interaction) => {
 
         if (subcommand === 'set_captain') {
             try {
-                if (!checkAccess(interaction, 'staff')) {
+                if (!await checkAccess(interaction, 'staff')) {
                     await interaction.reply('You do not have permission to use this command.');
                     return;
                 }
@@ -648,7 +702,7 @@ client.on('interactionCreate', async (interaction) => {
 
         if (subcommand === 'override_add'){
             try{
-                if (!checkAccess(interaction, 'staff')) {
+                if (!await checkAccess(interaction, 'staff')) {
                     await interaction.reply('You do not have permission to use this command.');
                     return;
                 }
@@ -678,7 +732,7 @@ client.on('interactionCreate', async (interaction) => {
 
         if (subcommand === 'override_remove'){
             try {
-                if (!checkAccess(interaction, 'staff')) {
+                if (!await checkAccess(interaction, 'staff')) {
                     await interaction.reply('You do not have permission to use this command.');
                     return;
                 }
@@ -708,7 +762,7 @@ client.on('interactionCreate', async (interaction) => {
 
         if (subcommand === 'update_team_info') {
             try {
-                if (!checkAccess(interaction, 'staff')) {
+                if (!await checkAccess(interaction, 'staff')) {
                     await interaction.reply('You do not have permission to use this command.');
                     return;
                 }
@@ -726,7 +780,7 @@ client.on('interactionCreate', async (interaction) => {
 
         if (subcommand === 'set_team_role') {
             try {
-                if (!checkAccess(interaction, 'staff')) {
+                if (!await checkAccess(interaction, 'staff')) {
                     await interaction.reply('You do not have permission to use this command.');
                     return;
                 }
@@ -740,12 +794,34 @@ client.on('interactionCreate', async (interaction) => {
                 await interaction.editReply('There was an error assigning the team role.');
             }
         }
+
+        if (subcommand === 'set_riot_id') {
+            try {
+                if (!await checkAccess(interaction, 'staff')) {
+                    await interaction.reply('You do not have permission to use this command.');
+                    return;
+                }
+                await interaction.deferReply(); // Acknowledge interaction
+                const discordId = interaction.options.getUser('discord_id').id;
+                const newRiotId = interaction.options.getString('new_riot_id');
+                const user = await getUserAndRank(newRiotId);
+                if (!user) {
+                    await interaction.editReply('Riot ID not found.');
+                    return;
+                }
+                const player = await db.updateRiotId(discordId, newRiotId);
+                await interaction.editReply(`Riot ID updated for ${player.name}`);
+            } catch (error) {
+                console.error('Failed to update Riot ID:', error);
+                await interaction.editReply('There was an error updating the Riot ID');
+            }
+        }
     }
 });
 
 
 
-function checkAccess(interaction, type) {
+async function checkAccess(interaction, type) {
     const allowedChannelIds = ['1239378714907770982', '1239378714907770982', '1160694040887578664'];
     const staffRoleNames = ['M2TheMichael', 'Besties (SuperMods)', 'Moderator', 'HEH Admin', 'MEH Admin', 'LEH Admin'];
     const captainRoleNames = ['High Elo Captains', 'Low Elo Captains', 'Mid Elo Captains'];
@@ -754,13 +830,16 @@ function checkAccess(interaction, type) {
     let roles;
     if (type === 'staff') {
         roles = staffRoleNames;
-    }
-    else if (type === 'captain') {
+    } else if (type === 'captain') {
         roles = captainRoleNames;
         roles.push(...staffRoleNames);
-    }
-    else if (type === 'all') {
+    } else if (type === 'all') {
         roles = staffRoleNames;
+        roles.push(...captainRoleNames);
+    } else if (type === 'player') {
+        roles = await db.getAllTeamRoleIds();
+        roles = roles.map(roleId => (interaction.guild.roles.cache.get(roleId))).filter(roleName => roleName).map(role => role.name);
+        roles.push(...staffRoleNames);
         roles.push(...captainRoleNames);
     }
 
@@ -784,13 +863,14 @@ function checkAccess(interaction, type) {
                 return true;
             }
         }
-    }
-    else {
+    } else {
         return true;
     }
 
     return false;
 }
+
+
 
 // const [predictionId, winningOption] = args;
 // const prediction = predictions[predictionId];

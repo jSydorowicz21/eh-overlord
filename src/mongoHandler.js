@@ -112,6 +112,17 @@ const db = {
         };
     },
 
+    getAllTeamRoleIds: async () => {
+        const teams = await Team.find();
+        return teams.map(team => team.teamRoleId);
+    },
+
+    updateRiotId: async (discordId, riotId) => {
+        const player = await Player.findOne({discordId:discordId});
+        player.riotId = riotId;
+        await player.save();
+    },
+
     deleteTeam: async (captainId) => {
         const team = await Team.findOneAndDelete({captainDiscordId: captainId});
         if (!team) {
