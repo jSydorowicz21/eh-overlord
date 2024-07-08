@@ -1,22 +1,6 @@
 const mongoose = require('mongoose');
-
-const PlayerSchema = new mongoose.Schema({
-    name: String,
-    discordId: String,
-    riotId: String,
-    team: {type: mongoose.Schema.Types.ObjectId, ref: 'Team'}
-});
-const TeamSchema = new mongoose.Schema({
-    name: String,
-    captain: String,
-    captainDiscordId: String,
-    teamChannelId: String,
-    teamRoleId: String,
-    players: [{type: mongoose.Schema.Types.ObjectId, ref: 'Player'}]
-});
-
-const Player = mongoose.model('Player', PlayerSchema);
-const Team = mongoose.model('Team', TeamSchema);
+const Player = require('../models/Player');
+const Team = require('../models/Team');
 
 const db = {
     getTeams: async () => await Team.find().populate('players'),
@@ -40,24 +24,24 @@ const db = {
     },
 
     setTeamChannel: async (teamName, channelId) => {
-        const team = await Team.findOne({name: teamName});
+        const team = await Team.findOne({ name: teamName });
         team.teamChannelId = channelId;
         await team.save();
     },
 
     setTeamRole: async (teamName, roleId) => {
-        const team = await Team.findOne({name: teamName});
+        const team = await Team.findOne({ name: teamName });
         team.teamRoleId = roleId;
         await team.save();
     },
 
     addPlayerToTeam: async (riotId, discordId, playerName, captainDiscordId) => {
-        const team = await Team.findOne({captainDiscordId: captainDiscordId});
+        const team = await Team.findOne({ captainDiscordId: captainDiscordId });
         if (!team) {
             throw new Error('Team not found');
         }
 
-        const player = await Player.findOne({discordId: discordId}).populate('team');
+        const player = await Player.findOne({ discordId: discordId }).populate('team');
         if (player) {
             if (player.team) {
                 throw new Error('Player already in a team');
@@ -69,41 +53,41 @@ const db = {
             await player.populate('team');
             return player;
         } else {
-            const player = new Player({
+            const newPlayer = new Player({
                 name: playerName,
                 discordId: discordId,
                 riotId: riotId,
                 team: team.id
             });
-            await player.save();
-            team.players.push(player.id);
+            await newPlayer.save();
+            team.players.push(newPlayer.id);
             await team.save();
-            await player.populate('team');
-            return player;
+            await newPlayer.populate('team');
+            return newPlayer;
         }
     },
 
     getTeamByCaptain: async (captainId) => {
-        return Team.findOne({captainDiscordId: captainId}).populate('players');
+        return Team.findOne({ captainDiscordId: captainId }).populate('players');
     },
 
     getTeamByPlayer: async (discordId) => {
-        const player = await Player.findOne({discordId: discordId}).populate('team');
+        const player = await Player.findOne({ discordId: discordId }).populate('team');
         return player.team.populate('players');
     },
 
-    setCaptain: async (captainId,captainName, teamName) => {
-        const team = await Team.findOne({name: teamName});
+    setCaptain: async (captainId, captainName, teamName) => {
+        const team = await Team.findOne({ name: teamName });
         team.captainId = captainId;
         team.captain = captainName;
         await team.save();
     },
 
     removePlayerFromTeam: async (playerDiscordId, captainId) => {
-        const team = await Team.findOne({captainDiscordId: captainId}).populate('players');
+        const team = await Team.findOne({ captainDiscordId: captainId }).populate('players');
         team.players = team.players.filter(p => p.discordId !== playerDiscordId);
         await team.save();
-        const player = await Player.findOne({discordId: playerDiscordId});
+        const player = await Player.findOne({ discordId: playerDiscordId });
         player.team = null;
         await player.save();
         return {
@@ -118,17 +102,17 @@ const db = {
     },
 
     updateRiotId: async (discordId, riotId) => {
-        const player = await Player.findOne({discordId:discordId});
+        const player = await Player.findOne({ discordId: discordId });
         player.riotId = riotId;
         await player.save();
     },
 
     deleteTeam: async (captainId) => {
-        const team = await Team.findOneAndDelete({captainDiscordId: captainId});
+        const team = await Team.findOneAndDelete({ captainDiscordId: captainId });
         if (!team) {
             throw new Error('Team not found');
         }
-        await Player.deleteMany({team: team._id});
+        await Player.deleteMany({ team: team._id });
         return team;
     },
 
@@ -152,7 +136,6 @@ const db = {
             await team.save();
         }
     },
-
 
     connect: async (dbUrl) => {
         await mongoose.connect(dbUrl);

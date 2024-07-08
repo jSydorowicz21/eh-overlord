@@ -1,29 +1,13 @@
-const { Client, IntentsBitField, Partials, EmbedBuilder, Colors, ButtonBuilder, ActionRowBuilder } = require('discord.js');
-const { ButtonStyle } = require("discord-api-types/v10");
 const puppeteer = require('puppeteer-extra');
 const stealth = require('puppeteer-extra-plugin-stealth');
-const ProxyRouter = require('@extra/proxy-router');
-const mongoose = require('mongoose');
-puppeteer.use(stealth());
+const { Client, IntentsBitField, Partials, EmbedBuilder, Colors, ButtonBuilder, ActionRowBuilder } = require('discord.js');
+const { ButtonStyle } = require('discord-api-types/v10');
+const db = require('./mongoHandler');
 require('dotenv').config();
 
-// Pulls Environment Variables
-const botToken = process.env.DISCORD_BOT_TOKEN;
-const openAiApiKey = process.env.OPENAI_API_KEY;
-// const mongoUri = process.env.MONGO_URI; // MongoDB connection URI
-
-const username = process.env.PROXY_USERNAME;
-const password = process.env.PROXY_PASSWORD;
-
-const valorantApiUrl = process.env.VALORANT_API_BASE_URL;
-const valorantApiKey = process.env.VALORANT_API_KEY;
-
-const proxyUrl = process.env.PROXY_URL;
-const auth = username + ":" + password;
+puppeteer.use(stealth());
 
 const rosterChannelId = '1257511444858273793';
-
-const db = require('./mongoHandler');
 
 // Function to send a voting message to a specific channel
 async function sendVotingMessage(player, captain, team, stats, channelId, trackerUrl, client, type, guild) {
@@ -46,7 +30,7 @@ async function sendVotingMessage(player, captain, team, stats, channelId, tracke
         riotReturn = await getUserAndRank(player.riotId);
         if (!riotReturn) {
             console.error('Error fetching user rank');
-            return
+            return;
         }
     } else if (type === 'remove') {
         description = `${captain.tag} has requested ${player.riotId} be removed from ${team.name}`;
@@ -56,18 +40,17 @@ async function sendVotingMessage(player, captain, team, stats, channelId, tracke
         riotReturn = await getUserAndRank(player.riotId);
         if (!riotReturn) {
             console.error('Error fetching user rank');
-            return
+            return;
         }
     }
-
 
     const embed = new EmbedBuilder()
         .setTitle(`# ${player.riotId}`)
         .setDescription(description)
         .addFields(
             { name: 'Tracker', value: `[View Stats](${trackerUrl})`, inline: true },
-            {name: 'Current Rank', value: riotReturn.currentRank || 'N/A', inline: true },
-            {name: 'Peak Rank', value: riotReturn.peakRank || 'N/A', inline: true },
+            { name: 'Current Rank', value: riotReturn.currentRank || 'N/A', inline: true },
+            { name: 'Peak Rank', value: riotReturn.peakRank || 'N/A', inline: true },
         )
         .setURL(trackerUrl)
         .setColor(Colors.Blue);
@@ -129,13 +112,13 @@ const fetchPlayerStats = async (riotId) => {
             headless: true,
             executablePath: puppeteer.executablePath(), // Ensure the correct executable path is used
             args: [
-                `--proxy-server=${proxyUrl}`,
+                `--proxy-server=${process.env.PROXY_URL}`,
                 '--no-sandbox',
                 '--disable-setuid-sandbox'
             ]
         });
         const page = await browser.newPage();
-        await page.authenticate({ username, password });
+        await page.authenticate({ username: process.env.PROXY_USERNAME, password: process.env.PROXY_PASSWORD });
         await page.goto(`${baseUrl}${encodeURIComponent(riotId)}/segments/season-report?=null`, { waitUntil: 'networkidle2' });
 
         const data = await page.evaluate(() => {
@@ -145,7 +128,7 @@ const fetchPlayerStats = async (riotId) => {
         await browser.close();
 
         const segments = data.data;
-        const actStats = segments.map(segment => extractStats(segment))
+        const actStats = segments.map(segment => extractStats(segment));
         return actStats;
     } catch (error) {
         console.error('Error fetching player stats:', error); // Improved error logging
@@ -198,15 +181,14 @@ async function handleTeamOperation(interaction, type, client) {
     let stats;
     let player;
     if (type === 'add') {
-        // stats = await fetchPlayerStats(playerId);
         player = {
             riotId: playerId,
             playerName: playerId.split('#')[0],
             playerDiscordId: interaction.options.getUser('discord_id').id,
-        }
+        };
     }
     else if (type === 'remove') {
-        player = { riotId: playerId, playerDiscordId: interaction.options.getUser('discord_id').id};
+        player = { riotId: playerId, playerDiscordId: interaction.options.getUser('discord_id').id };
     }
     const trackerUrl = `https://tracker.gg/valorant/profile/riot/${encodeURIComponent(playerId)}/overview?season=all`;
     const guild = client.guilds.cache.get(interaction.guildId);
@@ -242,9 +224,8 @@ async function deleteTeam(captainId) {
     return await db.deleteTeam(captainId);
 }
 
-async function sendTestMessage(client){
+async function sendTestMessage(client) {
     const playerId = 'hydro#3440';
-    const replacingPlayer = 'KFC';
     const stats = {
         rank: 'Currently Unranked',
         totalGamesThisEpisode: 4,
@@ -259,15 +240,11 @@ async function sendTestMessage(client){
 
 // Function to get Player UID
 async function getPlayerUID(name, tag) {
-    if (!valorantApiUrl || !valorantApiKey) {
-        console.error('Valorant API base URL not found.');
-        return null;
-    }
-    const apiUrl = `${valorantApiUrl}/v1/account/${encodeURIComponent(name)}/${encodeURIComponent(tag)}?force=true`;
+    const apiUrl = `${process.env.VALORANT_API_BASE_URL}/v1/account/${encodeURIComponent(name)}/${encodeURIComponent(tag)}?force=true`;
     try {
         const response = await fetch(apiUrl, {
             headers: {
-                Authorization: valorantApiKey,
+                Authorization: process.env.VALORANT_API_KEY,
             }
         });
         const json = await response.json();
@@ -284,11 +261,11 @@ async function getPlayerUID(name, tag) {
 
 // Function to get User Rank
 async function getUserRank(playerUID) {
-    const apiUrl = `${valorantApiUrl}/v2/by-puuid/mmr/na/${encodeURIComponent(playerUID)}`;
+    const apiUrl = `${process.env.VALORANT_API_BASE_URL}/v2/by-puuid/mmr/na/${encodeURIComponent(playerUID)}`;
     try {
         const response = await fetch(apiUrl, {
             headers: {
-                Authorization: valorantApiKey,
+                Authorization: process.env.VALORANT_API_KEY,
             }
         });
         const json = await response.json();
@@ -318,9 +295,6 @@ async function getUserAndRank(riotId) {
     return null;
 }
 
-// Define acts to extract
-const actsToExtract = ['E8: A3', 'E8: A2', 'E8: A1', 'E7: A3'];
-
 module.exports = {
     fetchPlayerStats,
     sendVotingMessage,
@@ -331,4 +305,4 @@ module.exports = {
     setCaptain,
     deleteTeam,
     getUserAndRank
-}
+};
