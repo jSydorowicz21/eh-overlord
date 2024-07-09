@@ -15,12 +15,6 @@ module.exports = [
                         required: true
                     },
                     {
-                        type: 3,
-                        name: 'captain_name',
-                        description: 'The name of the team captain',
-                        required: true
-                    },
-                    {
                         type: 6,
                         name: 'captain_discord_id',
                         description: 'The Discord ID of the team captain',

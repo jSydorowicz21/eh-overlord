@@ -128,8 +128,7 @@ const fetchPlayerStats = async (riotId) => {
         await browser.close();
 
         const segments = data.data;
-        const actStats = segments.map(segment => extractStats(segment));
-        return actStats;
+        return segments.map(segment => extractStats(segment));
     } catch (error) {
         console.error('Error fetching player stats:', error); // Improved error logging
         if (browser) await browser.close();
@@ -169,6 +168,10 @@ async function removePlayerFromTeam(playerId, captainId) {
 async function handleTeamOperation(interaction, type, client) {
     await interaction.deferReply(); // Acknowledge interaction
     let playerId = interaction.options.getString('riot_id');
+    if(!await verifyRiotId(playerId)) {
+        await interaction.editReply('Invalid Riot ID. Please verify the Riot ID and try again.');
+        return;
+    }
     if (type === 'remove') {
         playerId = (await db.getPlayerByDiscordId(interaction.options.getUser('discord_id').id)).riotId;
     }
@@ -285,6 +288,13 @@ async function getUserRank(playerUID) {
     return null;
 }
 
+// Function to verify riotId exists
+async function verifyRiotId(riotId) {
+    const [name, tag] = riotId.split('#');
+    const playerUID = await getPlayerUID(name, tag);
+    return !!playerUID;
+}
+
 // Function to get User and Rank
 async function getUserAndRank(riotId) {
     const [name, tag] = riotId.split('#');
@@ -304,5 +314,7 @@ module.exports = {
     handleTeamOperation,
     setCaptain,
     deleteTeam,
-    getUserAndRank
+    getUserAndRank,
+    verifyRiotId
+
 };
