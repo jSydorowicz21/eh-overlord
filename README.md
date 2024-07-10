@@ -94,6 +94,7 @@ node bot.js
     - `discord_id` (USER): The Discord ID of the player.
 
 ### Staff Commands
+
 - `/staff create_team`
   - Description: Create a new team.
   - Options:
@@ -146,11 +147,17 @@ node bot.js
     - `team_name` (STRING): The name of the team.
     - `role_id` (ROLE): The role to assign to the team.
 
+- `/staff set_riot_id`
+  - Description: Set the Riot ID for a player.
+  - Options:
+    - `discord_id` (USER): The Discord ID of the player.
+    - `new_riot_id` (STRING): The new Riot ID of the player.
+
 ## License
 
 This project is licensed under the in-house license. See the [LICENSE](LICENSE) file for more information.
 
-## File Descriptions
+### File Descriptions
 
 ### bot.js
 
@@ -166,41 +173,103 @@ Main bot file that handles the bot's commands and interactions with Discord and 
 - **Functions**: Includes functions for analyzing stats using OpenAI, fetching player stats, and handling various commands.
 - **Command Handling**: Handles interaction events from Discord and executes appropriate command functions.
 
-### playerHandler.js
+### src/commands/generalCommands.js
 
-Handles player-related operations such as fetching player stats, sending voting messages, and adding/removing players to/from teams.
+Contains general commands for the bot, such as checking if a player is a smurf, adding/removing players, and displaying team information.
 
-- **Environment Variables**: Loads environment variables for configuration.
-- **Functions**:
-   - `sendVotingMessage`: Sends a voting message to a specific channel.
-   - `fetchPlayerStats`: Fetches player stats using Puppeteer.
-   - `extractStats`: Extracts relevant stats from the fetched data.
-   - `addPlayerToTeam`: Adds a player to a team.
-   - `removePlayerFromTeam`: Removes a player from a team.
-   - `handleTeamOperation`: Handles dynamic team operations like adding or removing players.
-   - `setCaptain`: Sets a new team captain.
-   - `deleteTeam`: Deletes a team.
-   - `sendTestMessage`: Sends a test message for development purposes.
+### src/commands/predictionCommands.js
 
-### mongoHandler.js
+Handles commands related to predictions and point management.
+
+### src/commands/staffCommands.js
+
+Contains staff-level commands for managing teams and players, such as creating/deleting teams, setting team channels, and assigning roles.
+
+### src/handlers/interactionHandler.js
+
+Handles interactions with the bot, including executing commands and subcommands based on user interactions.
+
+### src/handlers/mongoHandler.js
 
 Handles MongoDB operations, including connecting to the database, managing teams and players, and defining schemas and models.
 
 - **Schemas**: Defines Mongoose schemas for `Player` and `Team`.
 - **Models**: Creates Mongoose models for `Player` and `Team`.
 - **Database Operations**:
-   - `getTeams`: Retrieves all teams with their players.
-   - `getTeamPlayers`: Retrieves players of a specific team.
-   - `createTeam`: Creates a new team.
-   - `setTeamChannel`: Sets the channel ID for a team.
-   - `setTeamRole`: Sets the role ID for a team.
-   - `addPlayerToTeam`: Adds a player to a team.
-   - `getTeamByCaptain`: Retrieves a team by the captain's Discord ID.
-   - `getTeamByPlayer`: Retrieves a team by a player's Discord ID.
-   - `setCaptain`: Sets the captain for a team.
-   - `removePlayerFromTeam`: Removes a player from a team.
-   - `deleteTeam`: Deletes a team.
-   - `connect`: Connects to MongoDB using the provided URI.
+  - `getTeams`: Retrieves all teams with their players.
+  - `getTeamPlayers`: Retrieves players of a specific team.
+  - `createTeam`: Creates a new team.
+  - `setTeamChannel`: Sets the channel ID for a team.
+  - `setTeamRole`: Sets the role ID for a team.
+  - `addPlayerToTeam`: Adds a player to a team.
+  - `getTeamByCaptain`: Retrieves a team by the captain's Discord ID.
+  - `getTeamByPlayer`: Retrieves a team by a player's Discord ID.
+  - `setCaptain`: Sets the captain for a team.
+  - `removePlayerFromTeam`: Removes a player from a team.
+  - `deleteTeam`: Deletes a team.
+  - `connect`: Connects to MongoDB using the provided URI.
+
+### src/handlers/playerHandler.js
+
+Handles player-related operations such as fetching player stats, sending voting messages, and adding/removing players to/from teams.
+
+- **Environment Variables**: Loads environment variables for configuration.
+- **Functions**:
+  - `sendVotingMessage`: Sends a voting message to a specific channel.
+  - `fetchPlayerStats`: Fetches player stats using Puppeteer.
+  - `extractStats`: Extracts relevant stats from the fetched data.
+  - `addPlayerToTeam`: Adds a player to a team.
+  - `removePlayerFromTeam`: Removes a player from a team.
+  - `handleTeamOperation`: Handles dynamic team operations like adding or removing players.
+  - `setCaptain`: Sets a new team captain.
+  - `deleteTeam`: Deletes a team.
+  - `sendTestMessage`: Sends a test message for development purposes.
+
+### src/models/Player.js
+
+Defines the Mongoose schema and model for a Player.
+
+### src/models/Point.js
+
+Defines the Mongoose schema and model for a Point.
+
+### src/models/Prediction.js
+
+Defines the Mongoose schema and model for a Prediction.
+
+### src/models/Team.js
+
+Defines the Mongoose schema and model for a Team.
+
+### src/utils/errorNoticeHelper.js
+
+Helper function for sending error notices to the bot owner.
+
+### src/utils/helperFunctions.js
+
+Contains various helper functions to handle subcommands and check access.
+
+- **checkAccess**: Checks if a user has the required permissions to execute a command.
+- **handleSubcommand**: Handles the execution of subcommands.
+- **handleTeamCreation**: Handles the creation of a new team.
+- **handleTeamDeletion**: Handles the deletion of a team.
+- **handleSetTeamChannel**: Sets the channel for a team.
+- **handleSetCaptain**: Sets a new captain for a team.
+- **handleOverrideAdd**: Adds a player to a team.
+- **handleOverrideRemove**: Removes a player from a team.
+- **handleUpdateTeamInfo**: Updates the information of a team.
+- **handleSetTeamRole**: Sets the role for a team.
+- **handleSetRiotId**: Sets the Riot ID for a player.
+
+### src/utils/logger.js
+
+Sets up logging using Winston.
+
+### src/utils/openAiHelper.js
+
+Contains helper functions for interacting with OpenAI's API.
+
+- **analyzeStats**: Analyzes player stats using OpenAI's API.
 
 ## Contributing
 

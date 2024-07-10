@@ -1,6 +1,6 @@
 const puppeteer = require('puppeteer-extra');
 const stealth = require('puppeteer-extra-plugin-stealth');
-const { Client, IntentsBitField, Partials, EmbedBuilder, Colors, ButtonBuilder, ActionRowBuilder } = require('discord.js');
+const {EmbedBuilder, Colors, ButtonBuilder, ActionRowBuilder } = require('discord.js');
 const { ButtonStyle } = require('discord-api-types/v10');
 const db = require('./mongoHandler');
 require('dotenv').config();
