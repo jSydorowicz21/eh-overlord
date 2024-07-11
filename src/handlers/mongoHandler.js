@@ -76,6 +76,10 @@ const db = {
         return player.team.populate('players');
     },
 
+    getTeamByName: async (teamName) => {
+        return Team.findOne({ name: teamName }).populate('players');
+    },
+
     setCaptain: async (captainId, captainName, teamName) => {
         const team = await Team.findOne({ name: teamName });
         team.captainId = captainId;
@@ -83,11 +87,24 @@ const db = {
         await team.save();
     },
 
-    removePlayerFromTeam: async (playerDiscordId, captainId) => {
-        const team = await Team.findOne({ captainDiscordId: captainId }).populate('players');
+    setManager: async (managerId, managerName, teamName) => {
+        const team = await Team.findOne({ name: teamName });
+        team.managerDiscordId = managerId;
+        team.manager = managerName;
+        await team.save();
+    },
+
+    removePlayerFromTeam: async (playerDiscordId) => {
+        const player = await Player.findOne({ discordId: playerDiscordId });
+        if (!player) {
+            throw new Error('Player not found');
+        }
+        const team = await Team.findById(player.team._id);
+        if (!team) {
+            throw new Error('Team not found');
+        }
         team.players = team.players.filter(p => p.discordId !== playerDiscordId);
         await team.save();
-        const player = await Player.findOne({ discordId: playerDiscordId });
         player.team = null;
         await player.save();
         return {

@@ -3,7 +3,7 @@ const {getUserAndRank} = require("../handlers/playerHandler");
 const checkAccess = async (interaction, type, db) => {
     const allowedChannelIds = ['1239378714907770982', '1239378714907770982', '1160694040887578664'];
     const staffRoleNames = ['M2TheMichael', 'Besties (SuperMods)', 'Moderator', 'HEH Admin', 'MEH Admin', 'LEH Admin'];
-    const captainRoleNames = ['High Elo Captains', 'Low Elo Captains', 'Mid Elo Captains'];
+    const captainRoleNames = ['High Elo Captains', 'Low Elo Captains', 'Mid Elo Captains', 'Team Manager'];
     const botOwnerId = '138673796675534848';
 
     let roles;
@@ -136,6 +136,45 @@ const handleSetCaptain = async (interaction, client, db, logger, errorNoticeHelp
     }
 };
 
+const handleSetManager = async (interaction, client, db, logger, errorNoticeHelper) => {
+    if (!await checkAccess(interaction, 'staff', db)) {
+        return;
+    }
+    await interaction.deferReply();
+    const newManagerDiscord = interaction.options.getUser('manager_discord_id');
+    const teamName = interaction.options.getString('team_name');
+    try {
+        const team =  await db.getTeamByName(teamName);
+        if (!team) {
+            await interaction.editReply(`Team ${teamName} not found.`);
+            return;
+        }
+        const guild = interaction.guild;
+
+        const previousManager = await guild.members.cache.get(team.managerDiscordId);
+        const teamRole = guild.roles.cache.get(team.teamRoleId);
+        const managerRole = guild.roles.cache.find(role => role.name === 'Team Manager');
+        await db.setManager(newManagerDiscord.id, newManagerDiscord.displayName, teamName);
+
+        if (previousManager) {
+            await previousManager.roles.remove(managerRole);
+            await previousManager.roles.remove(teamRole);
+        }
+
+        const member = guild.members.cache.get(newManagerDiscord.id);
+        if (member && team) {
+            await member.roles.add(teamRole);
+            await member.roles.add(managerRole);
+        }
+
+        await interaction.editReply(`Manager ${newManagerDiscord.displayName} set for team ${teamName}`);
+    } catch (error) {
+        logger.error('Failed to set manager:', error);
+        await errorNoticeHelper(error, client, interaction);
+    }
+
+}
+
 const handleOverrideAdd = async (interaction, client, db, logger, errorNoticeHelper) => {
     if (!await checkAccess(interaction, 'staff', db)) {
         return;
@@ -169,9 +208,8 @@ const handleOverrideRemove = async (interaction, client, db, logger, errorNotice
     }
     await interaction.deferReply();
     const playerDiscordId = interaction.options.getUser('player_discord_id').id;
-    const captainDiscordId = interaction.options.getUser('captain_discord_id').id;
     try {
-        const response = await db.removePlayerFromTeam(playerDiscordId, captainDiscordId);
+        const response = await db.removePlayerFromTeam(playerDiscordId);
 
         const guild = interaction.guild;
         const member = guild.members.cache.get(response.player.discordId);
@@ -250,9 +288,10 @@ module.exports = {
     handleTeamDeletion,
     handleSetTeamChannel,
     handleSetCaptain,
+    handleSetManager,
     handleOverrideAdd,
     handleOverrideRemove,
     handleUpdateTeamInfo,
     handleSetTeamRole,
-    handleSetRiotId
+    handleSetRiotId,
 };

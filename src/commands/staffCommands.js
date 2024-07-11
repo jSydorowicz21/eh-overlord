@@ -87,6 +87,25 @@ module.exports = [
             },
             {
                 type: 1,
+                name: 'set_manager',
+                description: 'Set a new manager for the team',
+                options: [
+                    {
+                        type: 6,
+                        name: 'manager_discord_id',
+                        description: 'The Discord ID of the new manager',
+                        required: true
+                    },
+                    {
+                        type: 3,
+                        name: 'team_name',
+                        description: 'The name of the team',
+                        required: true
+                    }
+                ]
+            },
+            {
+                type: 1,
                 name: 'override_add',
                 description: 'Add a player to the team',
                 options: [
@@ -119,12 +138,6 @@ module.exports = [
                         type: 6,
                         name: 'player_discord_id',
                         description: 'The Discord ID of the player',
-                        required: true
-                    },
-                    {
-                        type: 6,
-                        name: 'captain_discord_id',
-                        description: 'The Discord ID of the team captain',
                         required: true
                     }
                 ]

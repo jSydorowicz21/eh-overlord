@@ -3,7 +3,9 @@ const db = require('./mongoHandler');
 const analyzeStats = require('../utils/openAiHelper');
 const logger = require('../utils/logger');
 const errorNoticeHelper = require("../utils/errorNoticeHelper");
-const { checkAccess, handleSubcommand, handleTeamCreation, handleTeamDeletion, handleSetTeamChannel, handleSetCaptain, handleOverrideAdd, handleOverrideRemove, handleUpdateTeamInfo, handleSetTeamRole, handleSetRiotId } = require('../utils/helperFunctions');
+const { checkAccess, handleSubcommand, handleTeamCreation, handleTeamDeletion, handleSetTeamChannel, handleSetCaptain, handleOverrideAdd, handleOverrideRemove, handleUpdateTeamInfo, handleSetTeamRole, handleSetRiotId,
+    handleSetManager
+} = require('../utils/helperFunctions');
 
 const handleInteraction = async (interaction, client) => {
     if (!interaction.isCommand()) return;
@@ -127,6 +129,7 @@ const handleInteraction = async (interaction, client) => {
             delete_team: (interaction, client) => handleTeamDeletion(interaction, client, db, logger, errorNoticeHelper),
             set_team_channel: (interaction, client) => handleSetTeamChannel(interaction, client, db, logger, errorNoticeHelper),
             set_captain: (interaction, client) => handleSetCaptain(interaction, client, db, logger, errorNoticeHelper),
+            set_manager: (interaction, client) => handleSetManager(interaction, client, db, logger, errorNoticeHelper),
             override_add: (interaction, client) => handleOverrideAdd(interaction, client, db, logger, errorNoticeHelper),
             override_remove: (interaction, client) => handleOverrideRemove(interaction, client, db, logger, errorNoticeHelper),
             update_team_info: (interaction, client) => handleUpdateTeamInfo(interaction, client, db, logger, errorNoticeHelper),
