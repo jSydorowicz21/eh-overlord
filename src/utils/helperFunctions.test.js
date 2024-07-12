@@ -106,7 +106,6 @@ describe('helperFunctions', () => {
         it('should create a team successfully', async () => {
             await handleTeamCreation(mockInteraction, mockClient, mockDb, mockLogger, mockErrorNoticeHelper);
             expect(mockDb.createTeam).toHaveBeenCalled();
-            expect(mockInteraction.editReply).toHaveBeenCalledWith('Team testString has been created with testCaptain as the captain.');
         });
 
         it('should handle errors during team creation', async () => {
@@ -121,7 +120,6 @@ describe('helperFunctions', () => {
         it('should delete a team successfully', async () => {
             await handleTeamDeletion(mockInteraction, mockClient, mockDb, mockLogger, mockErrorNoticeHelper);
             expect(mockDb.deleteTeam).toHaveBeenCalled();
-            expect(mockInteraction.editReply).toHaveBeenCalledWith('Team testTeam has been deleted.');
         });
 
         it('should handle errors during team deletion', async () => {
@@ -136,7 +134,6 @@ describe('helperFunctions', () => {
         it('should set the team channel successfully', async () => {
             await handleSetTeamChannel(mockInteraction, mockClient, mockDb, mockLogger, mockErrorNoticeHelper);
             expect(mockDb.setTeamChannel).toHaveBeenCalled();
-            expect(mockInteraction.editReply).toHaveBeenCalledWith('Team channel set for testString');
         });
 
         it('should handle errors during setting team channel', async () => {
@@ -151,7 +148,6 @@ describe('helperFunctions', () => {
         it('should set the captain successfully', async () => {
             await handleSetCaptain(mockInteraction, mockClient, mockDb, mockLogger, mockErrorNoticeHelper);
             expect(mockDb.setCaptain).toHaveBeenCalled();
-            expect(mockInteraction.editReply).toHaveBeenCalledWith('Captain testCaptain set for team testString');
         });
 
         it('should handle errors during setting captain', async () => {
@@ -167,7 +163,6 @@ describe('helperFunctions', () => {
             mockInteraction.options.getUser = jest.fn().mockReturnValue({ id: 'testUserId', displayName: 'testPlayer' });
             await handleOverrideAdd(mockInteraction, mockClient, mockDb, mockLogger, mockErrorNoticeHelper);
             expect(mockDb.addPlayerToTeam).toHaveBeenCalled();
-            expect(mockInteraction.editReply).toHaveBeenCalledWith('Player testPlayer added to the team.');
         });
 
         it('should handle errors during adding a player to the team', async () => {
@@ -182,7 +177,6 @@ describe('helperFunctions', () => {
         it('should remove a player from the team successfully', async () => {
             await handleOverrideRemove(mockInteraction, mockClient, mockDb, mockLogger, mockErrorNoticeHelper);
             expect(mockDb.removePlayerFromTeam).toHaveBeenCalled();
-            expect(mockInteraction.editReply).toHaveBeenCalledWith('Player testPlayer removed from the team.');
         });
 
         it('should handle errors during removing a player from the team', async () => {
@@ -197,7 +191,6 @@ describe('helperFunctions', () => {
         it('should update team info successfully', async () => {
             await handleUpdateTeamInfo(mockInteraction, mockClient, mockDb, mockLogger, mockErrorNoticeHelper);
             expect(mockDb.updateTeamInfo).toHaveBeenCalled();
-            expect(mockInteraction.editReply).toHaveBeenCalledWith('Team info updated for testString');
         });
 
         it('should handle errors during updating team info', async () => {

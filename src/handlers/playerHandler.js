@@ -44,6 +44,10 @@ async function sendVotingMessage(player, captain, team, stats, channelId, tracke
         }
     }
 
+    const currentTime = new Date();
+    const futureTime = new Date(currentTime.getTime() + 24 * 60 * 60 * 1000);
+    const discordTimeCode = `<t:${Math.floor(futureTime.getTime() / 1000)}:R>`;
+
     const embed = new EmbedBuilder()
         .setTitle(`# ${player.riotId}`)
         .setDescription(description)
@@ -51,6 +55,7 @@ async function sendVotingMessage(player, captain, team, stats, channelId, tracke
             { name: 'Tracker', value: `[View Stats](${trackerUrl})`, inline: true },
             { name: 'Current Rank', value: riotReturn.currentRank || 'N/A', inline: true },
             { name: 'Peak Rank', value: riotReturn.peakRank || 'N/A', inline: true },
+            { name: 'Request Close Time', value: discordTimeCode, inline: true}
         )
         .setURL(trackerUrl)
         .setColor(Colors.Blue);
@@ -79,7 +84,7 @@ async function sendVotingMessage(player, captain, team, stats, channelId, tracke
                 await addPlayerToTeam(player.riotId, player.playerDiscordId, player.playerName, captain.id);
                 await addTeamRole(player.playerDiscordId, team.teamRoleId, guild);
             } else if (type === 'remove') {
-                await removePlayerFromTeam(player.playerDiscordId, captain.id);
+                await removePlayerFromTeam(player.playerDiscordId);
                 await removeTeamRole(player.playerDiscordId, team.teamRoleId, guild);
             }
             await i.update({ content: `Player ${player.riotId} has been approved to ${type === 'add' ? 'join' : 'get removed from'} ${team.name}. Please verify roles were updated for <@${player.playerDiscordId}>`, embeds: [], components: [] });
@@ -168,12 +173,12 @@ async function removePlayerFromTeam(playerId, captainId) {
 async function handleTeamOperation(interaction, type, client) {
     await interaction.deferReply(); // Acknowledge interaction
     let playerId = interaction.options.getString('riot_id');
+    if (type === 'remove') {
+        playerId = (await db.getPlayerByDiscordId(interaction.options.getUser('discord_id').id)).riotId;
+    }
     if(!await verifyRiotId(playerId)) {
         await interaction.editReply('Invalid Riot ID. Please verify the Riot ID and try again.');
         return;
-    }
-    if (type === 'remove') {
-        playerId = (await db.getPlayerByDiscordId(interaction.options.getUser('discord_id').id)).riotId;
     }
     const captain = interaction.user;
     const team = (await db.getTeamByCaptain(interaction.user.id));
