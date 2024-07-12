@@ -44,6 +44,10 @@ async function sendVotingMessage(player, captain, team, stats, channelId, tracke
         }
     }
 
+    const currentTime = new Date();
+    const futureTime = new Date(currentTime.getTime() + 24 * 60 * 60 * 1000);
+    const discordTimeCode = `<t:${Math.floor(futureTime.getTime() / 1000)}:R>`;
+
     const embed = new EmbedBuilder()
         .setTitle(`# ${player.riotId}`)
         .setDescription(description)
@@ -51,6 +55,7 @@ async function sendVotingMessage(player, captain, team, stats, channelId, tracke
             { name: 'Tracker', value: `[View Stats](${trackerUrl})`, inline: true },
             { name: 'Current Rank', value: riotReturn.currentRank || 'N/A', inline: true },
             { name: 'Peak Rank', value: riotReturn.peakRank || 'N/A', inline: true },
+            { name: 'Request Close Time', value: discordTimeCode, inline: true}
         )
         .setURL(trackerUrl)
         .setColor(Colors.Blue);

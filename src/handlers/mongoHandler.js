@@ -103,6 +103,7 @@ const db = {
         if (!team) {
             throw new Error('Team not found');
         }
+        await team.populate('players');
         team.players = team.players.filter(p => p.discordId !== playerDiscordId);
         await team.save();
         player.team = null;
