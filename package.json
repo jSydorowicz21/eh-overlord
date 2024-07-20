@@ -1,6 +1,6 @@
 {
   "name": "eh-overlord",
-  "version": "1.4.5",
+  "version": "1.5.7",
   "description": "",
   "main": "bot.js",
   "scripts": {
@@ -12,11 +12,14 @@
   "dependencies": {
     "@discordjs/rest": "^2.3.0",
     "@extra/proxy-router": "^3.1.6",
+    "@google-cloud/local-auth": "^3.0.1",
     "axios": "^1.7.2",
     "discord-api-types": "^0.37.91",
     "discord.js": "^14.15.3",
     "dotenv": "^16.4.5",
+    "googleapis": "^140.0.1",
     "mongoose": "^8.4.4",
+    "node-fetch": "^3.3.2",
     "openai": "^4.52.2",
     "puppeteer": "^22.12.1",
     "puppeteer-core": "^22.12.1",

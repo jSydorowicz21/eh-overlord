@@ -30,8 +30,46 @@ module.exports = [
         ]
     },
     {
-        name: 'send_voting_message',
-        description: 'Send a voting message to a specific channel',
+        name: 'remove_player',
+        description: 'Remove a player from the team',
+        options: [
+            {
+                type: 6,
+                name: 'discord_id',
+                description: 'The Discord ID of the player',
+                required: true
+            }
+        ]
+    },
+    {
+        name: 'add_coach',
+        description: 'Add a coach to the team',
+        options: [
+            {
+                type: 3,
+                name: 'riot_id',
+                description: 'The Riot ID of the coach',
+                required: true
+            },
+            {
+                type: 6,
+                name: 'discord_id',
+                description: 'The Discord ID of the coach',
+                required: true
+            }
+        ]
+    },
+    {
+        name: 'remove_coach',
+        description: 'Remove a coach from the team',
+        options: [
+            {
+                type: 6,
+                name: 'discord_id',
+                description: 'The Discord ID of the coach',
+                required: true
+            }
+        ]
     },
     {
         name: 'team',
@@ -40,18 +78,6 @@ module.exports = [
             {
                 type: 6,
                 name: 'player_discord_id',
-                description: 'The Discord ID of the player',
-                required: true
-            }
-        ]
-    },
-    {
-        name: 'remove_player',
-        description: 'Remove a player from the team',
-        options: [
-            {
-                type: 6,
-                name: 'discord_id',
                 description: 'The Discord ID of the player',
                 required: true
             }

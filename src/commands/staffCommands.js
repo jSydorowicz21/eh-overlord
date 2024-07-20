@@ -106,6 +106,44 @@ module.exports = [
             },
             {
                 type: 1,
+                name: 'add_coach',
+                description: 'Add a coach to the team',
+                options: [
+                    {
+                        type: 6,
+                        name: 'coach_discord_id',
+                        description: 'The Discord ID of the coach',
+                        required: true
+                    },
+                    {
+                        type: 3,
+                        name: 'riot_id',
+                        description: 'The Riot ID of the coach',
+                        required: true
+                    },
+                    {
+                        type: 3,
+                        name: 'team_name',
+                        description: 'The name of the team',
+                        required: true
+                    }
+                ]
+            },
+            {
+                type: 1,
+                name: 'remove_coach',
+                description: 'Remove a coach from the team',
+                options: [
+                    {
+                        type: 6,
+                        name: 'coach_discord_id',
+                        description: 'The Discord ID of the coach',
+                        required: true
+                    },
+                ]
+            },
+            {
+                type: 1,
                 name: 'override_add',
                 description: 'Add a player to the team',
                 options: [
