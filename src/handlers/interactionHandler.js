@@ -1,10 +1,14 @@
-const { fetchPlayerStats, handleTeamOperation, deleteTeam, setCaptain, getUserAndRank, sendTestMessage, verifyRiotId } = require("./playerHandler");
+const { fetchPlayerStats, handleTeamOperation, deleteTeam, setCaptain, getUserAndRank, sendTestMessage, verifyRiotId,
+    promptCoachReplacement, handleCoachOperation
+} = require("./playerHandler");
 const db = require('./mongoHandler');
 const analyzeStats = require('../utils/openAiHelper');
 const logger = require('../utils/logger');
 const errorNoticeHelper = require("../utils/errorNoticeHelper");
 const { checkAccess, handleSubcommand, handleTeamCreation, handleTeamDeletion, handleSetTeamChannel, handleSetCaptain, handleOverrideAdd, handleOverrideRemove, handleUpdateTeamInfo, handleSetTeamRole, handleSetRiotId,
-    handleSetManager
+    handleSetManager,
+    handleAddCoach,
+    handleRemoveCoach
 } = require('../utils/helperFunctions');
 
 const handleInteraction = async (interaction, client) => {
@@ -39,13 +43,23 @@ const handleInteraction = async (interaction, client) => {
         }
     }
 
-    if (interaction.commandName === 'send_voting_message') {
-        if (!await checkAccess(interaction, 'staff', db)) {
+    if (interaction.commandName === 'add_coach' || interaction.commandName === 'remove_coach') {
+        if (!await checkAccess(interaction, 'captain', db)) {
             return;
         }
-        await interaction.deferReply();
-        await sendTestMessage(client);
-        await interaction.editReply('Voting message sent.');
+        interaction.deferReply({ ephemeral: true});
+        const type = interaction.commandName === 'add_coach' ? 'add' : 'remove';
+        try {
+            const guild = client.guilds.cache.get(interaction.guildId);
+            const coachId = interaction.options.getUser('discord_id').id;
+            const coachDiscord = guild.members.cache.get(coachId);
+            const riotId = interaction.options.getString('riot_id');
+            const requesterId = interaction.user.id;
+            await handleCoachOperation(coachId, coachDiscord, riotId, requesterId, type, interaction, client);
+        } catch (error) {
+            logger.error('Failed to add or remove coach:', error);
+            await errorNoticeHelper(error, client, interaction);
+        }
     }
 
     if (interaction.commandName === 'team') {
@@ -85,12 +99,13 @@ const handleInteraction = async (interaction, client) => {
     }
 
     if (interaction.commandName === 'get_player_info') {
-        if (!await checkAccess(interaction, 'all', db)) {
-            return;
-        }
-        await interaction.deferReply({ ephemeral: true });
-        const playerDiscordId = interaction.options.getUser('discord_id').id;
         try {
+            if (!await checkAccess(interaction, 'all', db)) {
+                return;
+            }
+            await interaction.deferReply({ ephemeral: true });
+            const playerDiscordId = interaction.options.getUser('discord_id').id;
+
             const player = await db.getPlayerByDiscordId(playerDiscordId);
             if (player) {
                 await interaction.editReply(`**${player.name}**\nRiot ID: ${player.riotId}\nTeam: ${player.team ? player.team.name : 'None'}`);
@@ -104,12 +119,13 @@ const handleInteraction = async (interaction, client) => {
     }
 
     if (interaction.commandName === 'update_riot_id') {
-        if (!await checkAccess(interaction, 'player', db)) {
-            return;
-        }
-        await interaction.deferReply({ ephemeral: true });
-        const newRiotId = interaction.options.getString('new_riot_id');
         try {
+            if (!await checkAccess(interaction, 'player', db)) {
+                return;
+            }
+            await interaction.deferReply({ ephemeral: true });
+            const newRiotId = interaction.options.getString('new_riot_id');
+
             if (!await verifyRiotId(newRiotId)) {
                 await interaction.editReply('Invalid Riot ID, please double check the riot ID or unprivate your tracker');
                 return;
@@ -134,7 +150,9 @@ const handleInteraction = async (interaction, client) => {
             override_remove: (interaction, client) => handleOverrideRemove(interaction, client, db, logger, errorNoticeHelper),
             update_team_info: (interaction, client) => handleUpdateTeamInfo(interaction, client, db, logger, errorNoticeHelper),
             set_team_role: (interaction, client) => handleSetTeamRole(interaction, client, db, logger, errorNoticeHelper),
-            set_riot_id: (interaction, client) => handleSetRiotId(interaction, client, db, logger, errorNoticeHelper)
+            set_riot_id: (interaction, client) => handleSetRiotId(interaction, client, db, logger, errorNoticeHelper),
+            add_coach: (interaction, client) => handleAddCoach(interaction, client, db, logger, errorNoticeHelper),
+            remove_coach: (interaction, client) => handleRemoveCoach(interaction, client, db, logger, errorNoticeHelper),
         };
 
         await handleSubcommand(interaction, client, subcommandHandler);

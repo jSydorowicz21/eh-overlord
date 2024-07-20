@@ -1,4 +1,8 @@
-const {getUserAndRank} = require("../handlers/playerHandler");
+const {getUserAndRank, verifyRiotId} = require("../handlers/playerHandler");
+
+require('dotenv').config();
+
+const coachRole = process.env.COACH_ROLE;
 
 const checkAccess = async (interaction, type, db) => {
     const allowedChannelIds = ['1239378714907770982', '1239378714907770982', '1160694040887578664'];
@@ -63,6 +67,7 @@ const handleTeamCreation = async (interaction, client, db, logger, errorNoticeHe
         const member = guild.members.cache.get(captainDiscordId);
         if (member) {
             await member.roles.add(guild.roles.cache.get(teamRole.id));
+            await member.roles.add(guild.roles.cache.get(process.env.CAPTAIN_ROLE));
         }
         await interaction.editReply(`Team ${teamName} has been created with ${captainName} as the captain.`);
     } catch (error) {
@@ -120,13 +125,28 @@ const handleSetCaptain = async (interaction, client, db, logger, errorNoticeHelp
     const newCaptainDiscord = interaction.options.getUser('captain_discord_id');
     const teamName = interaction.options.getString('team_name');
     try {
+        let team = await db.getTeamByName(teamName);
+        if (!await db.getTeamByName(teamName)) {
+            await interaction.editReply(`Team ${teamName} not found.`);
+            return;
+        }
+
         await db.setCaptain(newCaptainDiscord.id, newCaptainDiscord.displayName, teamName);
 
         const guild = interaction.guild;
+        const captainRole = guild.roles.cache.get(process.env.CAPTAIN_ROLE);
+        const seasonRole = guild.roles.cache.get(process.env.SEASON_ROLE);
+        const oldCaptain = guild.members.cache.get(team.captainDiscordId);
         const member = guild.members.cache.get(newCaptainDiscord.id);
-        const team = await db.getTeamByCaptain(newCaptainDiscord.id);
-        if (member && team) {
+
+        if (member && team && oldCaptain) {
+            await oldCaptain.roles.remove(captainRole);
+            await oldCaptain.roles.remove(guild.roles.cache.get(team.teamRoleId));
+            await oldCaptain.roles.remove(seasonRole);
+
             await member.roles.add(guild.roles.cache.get(team.teamRoleId));
+            await member.roles.add(captainRole);
+            await member.roles.add(seasonRole);
         }
 
         await interaction.editReply(`Captain ${newCaptainDiscord.displayName} set for team ${teamName}`);
@@ -152,24 +172,93 @@ const handleSetManager = async (interaction, client, db, logger, errorNoticeHelp
         const guild = interaction.guild;
 
         const previousManager = await guild.members.cache.get(team.managerDiscordId);
-        const teamRole = guild.roles.cache.get(team.teamRoleId);
-        const managerRole = guild.roles.cache.find(role => role.name === 'Team Manager');
+        const teamRole = await guild.roles.cache.get(team.teamRoleId);
+        const managerRole = await guild.roles.cache.find(role => role.name === 'Team Manager');
+        const seasonRole = await guild.roles.cache.get(process.env.SEASON_ROLE);
+
+        if (!managerRole) {
+            await interaction.editReply('Team Manager role not found. Have a staff member set the team role.');
+            return;
+        }
+        if (!teamRole) {
+            await interaction.editReply('Team role not found. Have a staff member set the team role.');
+            return;
+        }
+
         await db.setManager(newManagerDiscord.id, newManagerDiscord.displayName, teamName);
 
         if (previousManager) {
             await previousManager.roles.remove(managerRole);
             await previousManager.roles.remove(teamRole);
+            await previousManager.roles.remove(seasonRole);
         }
 
-        const member = guild.members.cache.get(newManagerDiscord.id);
+        const member = await guild.members.cache.get(newManagerDiscord.id);
         if (member && team) {
             await member.roles.add(teamRole);
             await member.roles.add(managerRole);
+            await member.roles.add(seasonRole);
         }
 
         await interaction.editReply(`Manager ${newManagerDiscord.displayName} set for team ${teamName}`);
     } catch (error) {
         logger.error('Failed to set manager:', error);
+        await errorNoticeHelper(error, client, interaction);
+    }
+
+}
+
+const handleAddCoach = async (interaction, client, db, logger, errorNoticeHelper) => {
+    if (!await checkAccess(interaction, 'staff', db)) {
+        return;
+    }
+    await interaction.deferReply();
+    const coachDiscordId = interaction.options.getUser('coach_discord_id').id;
+    const coachRiotId = interaction.options.getString('riot_id');
+    const teamName = interaction.options.getString('team_name');
+    const coachName = interaction.guild.members.cache.get(coachDiscordId).displayName;
+    try {
+        await verifyRiotId(coachRiotId);
+        const coach = await db.addCoach(coachDiscordId, coachName, coachRiotId, teamName);
+        const guild = interaction.guild;
+        const member = guild.members.cache.get(coachDiscordId);
+        if (member) {
+            const teamRole = guild.roles.cache.get(coach.team.teamRoleId);
+            const seasonRole = guild.roles.cache.get(process.env.SEASON_ROLE);
+            const coachRoleObj = guild.roles.cache.get(coachRole);
+            await member.roles.add(teamRole);
+            await member.roles.add(seasonRole);
+            await member.roles.add(coachRoleObj);
+        }
+        await interaction.editReply(`Coach ${member.displayName} added to the team.`);
+    } catch (error) {
+        logger.error('Failed to add coach:', error);
+        await errorNoticeHelper(error, client, interaction);
+    }
+
+}
+
+const handleRemoveCoach = async (interaction, client, db, logger, errorNoticeHelper) => {
+    if (!await checkAccess(interaction, 'staff', db)) {
+        return;
+    }
+    await interaction.deferReply();
+    const coachDiscordId = interaction.options.getUser('coach_discord_id').id;
+    try {
+        const response = await db.removeCoach(coachDiscordId);
+
+        const guild = interaction.guild;
+        const teamRoleId = response.team.teamRoleId;
+        const member = guild.members.cache.get(coachDiscordId);
+        if (member) {
+            await member.roles.remove(guild.roles.cache.get(teamRoleId));
+            await member.roles.remove(guild.roles.cache.get(process.env.SEASON_ROLE));
+            await member.roles.remove(guild.roles.cache.get(coachRole));
+        }
+
+        await interaction.editReply(`Coach ${member.displayName} removed from the team.`);
+    } catch (error) {
+        logger.error('Failed to remove coach:', error);
         await errorNoticeHelper(error, client, interaction);
     }
 
@@ -185,13 +274,19 @@ const handleOverrideAdd = async (interaction, client, db, logger, errorNoticeHel
     const playerName = riotId.split('#')[0];
     const captainDiscordId = interaction.options.getUser('captain_discord_id').id;
     try {
+        if (!await verifyRiotId(riotId)) {
+            await interaction.editReply('Invalid Riot Id provided');
+            return;
+        }
         const player = await db.addPlayerToTeam(riotId, discordId, playerName, captainDiscordId);
 
         const guild = interaction.guild;
         const member = guild.members.cache.get(discordId);
         if (member) {
-            const role = guild.roles.cache.get(player.team.teamRoleId);
-            await member.roles.add(role);
+            const teamRole = guild.roles.cache.get(player.team.teamRoleId);
+            const seasonRole = guild.roles.cache.get(process.env.SEASON_ROLE);
+            await member.roles.add(teamRole);
+            await member.roles.add(seasonRole);
         }
 
         const nickName = member ? member.displayName : playerName;
@@ -214,9 +309,10 @@ const handleOverrideRemove = async (interaction, client, db, logger, errorNotice
         const guild = interaction.guild;
         const member = guild.members.cache.get(response.player.discordId);
         if (member) {
-            const teamRoleId = response.team.teamRoleId;
-            const role = guild.roles.cache.get(teamRoleId);
-            if (role) await member.roles.remove(role);
+            const teamRole = guild.roles.cache.get(response.team.teamRoleId);
+            const seasonRole = guild.roles.cache.get(process.env.SEASON_ROLE);
+            await member.roles.remove(teamRole);
+            await member.roles.remove(seasonRole);
         }
 
         const nickName = member ? member.displayName : response.player.name;
@@ -294,4 +390,7 @@ module.exports = {
     handleUpdateTeamInfo,
     handleSetTeamRole,
     handleSetRiotId,
+    handleAddCoach,
+    handleRemoveCoach,
+
 };
