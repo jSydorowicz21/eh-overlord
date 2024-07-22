@@ -10,6 +10,8 @@ const { checkAccess, handleSubcommand, handleTeamCreation, handleTeamDeletion, h
     handleAddCoach,
     handleRemoveCoach
 } = require('../utils/helperFunctions');
+const {ButtonBuilder, ActionRowBuilder, EmbedBuilder, Colors} = require("discord.js");
+const {ButtonStyle} = require("discord-api-types/v10");
 
 const handleInteraction = async (interaction, client) => {
     if (!interaction.isCommand()) return;
@@ -71,7 +73,18 @@ const handleInteraction = async (interaction, client) => {
         try {
             const team = await db.getTeamByPlayer(playerDiscordId);
             if (team) {
-                await interaction.editReply(`Team ${team.name} with captain ${team.captain} has the following players: ${team.players.map(player => ` [${player.riotId}](https://tracker.gg/valorant/profile/riot/${encodeURIComponent(player.riotId)}/overview?season=all)`).join(', ')}`);
+                let reply = `Team ${team.name} with captain <@${team.captainDiscordId}> `;
+                if (team.managerDiscordId) {
+                    reply += `and manager <@${team.managerDiscordId}> `;
+                }
+                reply += `has the following players: 
+                    ${team.players.map(player => ` [${player.riotId}](https://tracker.gg/valorant/profile/riot/${encodeURIComponent(player.riotId)}/overview?season=all)`).join(', ')}`;
+
+                if (team.coaches && team.coaches.length > 0) {
+                    await team.populate('coaches');
+                    reply += `\n and these Coaches: \n ${team.coaches.map(coach => `<@${coach.discordId}>`).join(', ')}`;
+                }
+                await interaction.editReply(reply);
             } else {
                 await interaction.editReply('No team found for the given user.');
             }
@@ -88,10 +101,65 @@ const handleInteraction = async (interaction, client) => {
         await interaction.deferReply({ ephemeral: true });
         try {
             const teams = await db.getTeams();
-            const teamInfo = teams.map(team =>
-                `**${team.name}** (Captain: ${team.captain})\nPlayers: ${team.players.map(player => player.riotId).join(', ')}`
-            ).join('\n\n');
-            await interaction.editReply(teamInfo || 'No teams found.');
+
+            if (teams.length === 0) {
+                await interaction.editReply('No teams found.');
+                return;
+            }
+
+            const components = [];
+            for (const team of teams) {
+                const button = new ButtonBuilder()
+                    .setCustomId(`team_${team._id}`)
+                    .setLabel(team.name)
+                    .setStyle(ButtonStyle.Primary);
+                components.push(button);
+            }
+
+            const rows = [];
+            for (let i = 0; i < components.length; i += 5) {
+                const row = new ActionRowBuilder().addComponents(components.slice(i, i + 5));
+                rows.push(row);
+            }
+
+            await interaction.editReply({
+                content: 'Select a team to view details:',
+                components: rows
+            });
+
+            const filter = i => i.customId.startsWith('team_') && i.user.id === interaction.user.id;
+            const collector = interaction.channel.createMessageComponentCollector({ filter, time: 60 * 1000 * 5 });
+
+            collector.on('collect', async i => {
+                const teamId = i.customId.split('_')[1];
+                const team = await db.getTeamById(teamId);
+
+                if (team) {
+                    let reply = `Team ${team.name} with captain <@${team.captainDiscordId}> `;
+                    if (team.managerDiscordId) {
+                        reply += `and manager <@${team.managerDiscordId}> `;
+                    }
+                    reply += `has the following players: 
+                    ${team.players.map(player => ` [${player.riotId}](https://tracker.gg/valorant/profile/riot/${encodeURIComponent(player.riotId)}/overview?season=all)`).join(', ')}`;
+
+                    if (team.coaches && team.coaches.length > 0) {
+                        await team.populate('coaches');
+                        reply += `\n and these Coaches: \n ${team.coaches.map(coach => `<@${coach.discordId}>`).join(', ')}`;
+                    }
+                    const embed = new EmbedBuilder()
+                        .setTitle(team.name)
+                        .setDescription(reply)
+                        .setColor(Colors.Blue);
+
+                    await i.reply({ embeds: [embed], ephemeral: true });
+                } else {
+                    await i.reply({ content: 'Team not found.', ephemeral: true });
+                }
+            });
+
+            collector.on('end', collected => {
+                interaction.editReply({ content: 'Select a team to view details: (interaction ended)', components: [] });
+            });
         } catch (error) {
             logger.error('Failed to list teams:', error);
             await errorNoticeHelper(error, client, interaction);

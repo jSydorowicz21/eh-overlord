@@ -124,6 +124,10 @@ module.exports = [
         description: 'List all teams with their captains and players',
     },
     {
+        name: 'list_teams_buttons',
+        description: 'List all teams with their captains and players (buttons)',
+    },
+    {
         name: 'get_player_info',
         description: 'Get detailed information about a specific player',
         options: [

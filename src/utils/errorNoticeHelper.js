@@ -8,7 +8,12 @@ async function errorNoticeHelper(error, client, interaction) {
         Stack: ${error.stack}
         `
     );
-    await interaction.editReply(`There was an error during your request. <@138673796675534848> has been notified of the error.`);
+    try {
+        await interaction.editReply(`There was an error during your request. <@138673796675534848> has been notified of the error.`);
+    }
+    catch (error) {
+        await interaction.update(`There was an error during your request. <@138673796675534848> has been notified of the error.`);
+    }
 }
 
 module.exports = errorNoticeHelper;
