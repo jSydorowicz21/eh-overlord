@@ -6,6 +6,8 @@ const Coach = require("../models/Coach");
 const db = {
     getTeams: async () => await Team.find().populate('players'),
 
+    getTeamById: async (teamId) => await Team.findById(teamId).populate('players'),
+
     getTeamPlayers: async (teamId) => {
         const team = await Team.findById(teamId).populate('players');
         return team.players;
