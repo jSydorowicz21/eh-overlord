@@ -45,4 +45,18 @@ client.on('interactionCreate', async (interaction) => {
     await handleInteraction(interaction, client);
 });
 
+
+// const michaelId = '422163140956913664';
+// try{
+//     client.on('messageCreate', async (message) => {
+//         if (message.author.id === michaelId) {
+//             // If michael react with 📉 emoji
+//             await message.react('📉');
+//         }
+//     });
+// } catch (error) {
+//     console.error(error);
+// }
+
+
 client.login(botToken);
