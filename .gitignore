@@ -1,0 +1,11 @@
+node_modules/
+.env
+.idea/
+coverage/
+token.json
+test.json
+sessions.json
+google-creds.json
+*.log
+credentials.json
+bracketBuilder.mjs

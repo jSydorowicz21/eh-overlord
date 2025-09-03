@@ -1,11 +1,9 @@
-const { Client, IntentsBitField, Partials } = require('discord.js');
+const { Client, IntentsBitField, Partials, REST, Routes } = require('discord.js');
 require('dotenv').config();
 const db = require('./src/handlers/mongoHandler');
 const handleInteraction = require('./src/handlers/interactionHandler');
 const generalCommands = require('./src/commands/generalCommands');
 const staffCommands = require('./src/commands/staffCommands');
-const { REST } = require('@discordjs/rest');
-const { Routes } = require('discord-api-types/v10');
 const logger = require('./src/utils/logger');
 
 const botToken = process.env.DISCORD_BOT_TOKEN;
@@ -45,6 +43,18 @@ client.on('interactionCreate', async (interaction) => {
     await handleInteraction(interaction, client);
 });
 
+client.on('ready', () => {
+    logger.info(`Bot is ready! Logged in as ${client.user.tag}`);
+});
+
+client.on('error', (error) => {
+    logger.error('Discord client error:', error);
+});
+
+client.login(botToken).catch(error => {
+    logger.error('Failed to login:', error);
+});
+
 
 // const michaelId = '422163140956913664';
 // try{
@@ -57,6 +67,3 @@ client.on('interactionCreate', async (interaction) => {
 // } catch (error) {
 //     console.error(error);
 // }
-
-
-client.login(botToken);

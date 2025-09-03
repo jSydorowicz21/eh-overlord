@@ -1,6 +1,6 @@
-# Discord Bot for Team Management
+# EH Overlord - Discord Bot for Team Management
 
-This Discord bot is designed to manage teams and players, specifically for Valorant. It includes commands to check if a player is likely a smurf, add/remove players to/from teams, create/delete teams, and more. The bot also uses OpenAI for player analysis.
+A Node.js Discord bot designed to manage teams and players for the Elo Heroes League, supporting 800+ players with persistent MongoDB storage. The bot includes comprehensive team management features, player verification, and automated role management.
 
 ## Table of Contents
 
@@ -9,22 +9,29 @@ This Discord bot is designed to manage teams and players, specifically for Valor
 - [Configuration](#configuration)
 - [Usage](#usage)
 - [Commands](#commands)
+- [Architecture](#architecture)
+- [Contributing](#contributing)
+- [Contact](#contact)
 - [License](#license)
 
 ## Features
 
-- Check if a player is likely a smurf.
-- Add or remove players from teams.
-- Create or delete teams.
-- Set team channels and captains.
-- Use OpenAI for player analysis.
+- **Team Management**: Create, delete, and manage teams with captains and managers
+- **Player Operations**: Add/remove players and coaches with approval workflows
+- **Role Management**: Automated Discord role assignment and removal
+- **Player Verification**: Check player stats and rank using Tracker.gg integration
+- **Voting System**: Approval-based player addition/removal with Discord buttons
+- **MongoDB Integration**: Persistent data storage for teams, players, and coaches
+- **Proxy Support**: Web scraping with proxy authentication for player stats
+- **OpenAI Integration**: AI-powered player analysis and smurf detection
+- **Comprehensive Logging**: Winston-based logging system
 
 ## Installation
 
 1. Clone the repository:
     ```sh
-    git clone https://github.com/yourusername/discord-team-management-bot.git
-    cd discord-team-management-bot
+    git clone https://github.com/jSydorowicz21/eh-overlord.git
+    cd eh-overlord
     ```
 
 2. Install dependencies:
@@ -34,247 +41,179 @@ This Discord bot is designed to manage teams and players, specifically for Valor
 
 3. Create a `.env` file in the root directory and add your environment variables (see [Configuration](#configuration)).
 
+4. Start the bot:
+    ```sh
+    node bot.js
+    ```
+
 ## Configuration
 
-Create a `.env` file in the root directory and add the following environment variables:
+Create a `.env` file in the root directory with the following environment variables:
 
-```
+```env
+# Discord Configuration
 DISCORD_BOT_TOKEN=your-discord-bot-token
-OPENAI_API_KEY=your-openai-api-key
-GUILD_ID=your-guild-id
 APPLICATION_ID=your-application-id
-MONGODB_URI=your-mongodb-uri
+GUILD_ID=your-guild-id
+
+# Database
+MONGODB_URI=your-mongodb-connection-string
+
+# API Keys
+OPENAI_API_KEY=your-openai-api-key
+VALORANT_API_KEY=your-valorant-api-key
+VALORANT_API_BASE_URL=valorant-api-base-url
+
+# Web Scraping
 PROXY_URL=your-proxy-url
 PROXY_USERNAME=your-proxy-username
 PROXY_PASSWORD=your-proxy-password
-TRACKER_BASE_URL=your-tracker-base-url
-OPENAPI_PROMPT=your-openapi-prompt
+TRACKER_BASE_URL=https://tracker.gg/valorant/profile/riot/
+
+# Roles
+SEASON_ROLE=your-season-role-id
+COACH_ROLE=your-coach-role-id
+CAPTAIN_ROLE=your-captain-role-id
+
+# OpenAI Configuration
+OPENAPI_PROMPT=your-custom-prompt-for-player-analysis
 ```
 
 ## Usage
 
-Start the bot:
-```sh
-node bot.js
-```
+The bot automatically connects to MongoDB and registers slash commands on startup. It supports both general user commands and staff-level administrative commands.
 
 ## Commands
 
 ### General Commands
-- `/check`
-  - Description: Check if a player is likely a smurf.
-  - Options:
-    - `riot_id` (STRING): The Riot ID of the player (e.g., username#tagline).
 
-- `/add_player`
-  - Description: Add a player to the team.
-  - Options:
-    - `riot_id` (STRING): The Riot ID of the player (e.g., username#tagline).
-    - `discord_id` (USER): The Discord ID of the player.
+- **`/check`** - Check if a player is likely a smurf
+  - `riot_id` (STRING): The Riot ID of the player (e.g., username#tagline)
 
-- `/remove_player`
-  - Description: Remove a player from the team.
-  - Options:
-    - `riot_id` (STRING): The Riot ID of the player (e.g., username#tagline).
+- **`/add_player`** - Request to add a player to your team
+  - `riot_id` (STRING): The Riot ID of the player
+  - `discord_id` (USER): The Discord user to add
 
-- `/send_voting_message`
-  - Description: Send a voting message to a specific channel.
+- **`/remove_player`** - Request to remove a player from your team
+  - `discord_id` (USER): The Discord user to remove
 
-- `/team`
-  - Description: Display team information.
-  - Options:
-    - `player_discord_id` (USER): The Discord ID of the player.
+- **`/add_coach`** - Add a coach to your team
+  - `riot_id` (STRING): The Riot ID of the coach
+  - `discord_id` (USER): The Discord user to add as coach
 
-- `/list_teams`
-  - Description: List all teams and their players.
+- **`/remove_coach`** - Remove a coach from your team
+  - `discord_id` (USER): The Discord user to remove as coach
 
-- `/get_player_info`
-  - Description: Get information about a player.
-  - Options:
-    - `discord_id` (USER): The Discord ID of the player.
+- **`/team`** - Display team information
+  - `player_discord_id` (USER): The Discord user to check
+
+- **`/request_sub`** - Request a substitute player
+  - `riot_id` (STRING): The Riot ID of the substitute
+  - `discord_id` (USER): The Discord user to add as substitute
 
 ### Staff Commands
 
-- `/staff create_team`
-  - Description: Create a new team.
-  - Options:
-    - `team_name` (STRING): The name of the team.
-    - `captain_name` (STRING): The name of the team captain.
-    - `captain_discord_id` (USER): The Discord ID of the team captain.
-    - `team_channel` (CHANNEL): The channel to set for the team.
-    - `team_role` (ROLE): The role to set for the team.
+- **`/staff create_team`** - Create a new team
+  - `team_name` (STRING): The name of the team
+  - `captain_discord_id` (USER): The Discord ID of the team captain
+  - `team_channel` (CHANNEL): The channel to set for the team
+  - `team_role` (ROLE): The role to assign to the team
 
-- `/staff delete_team`
-  - Description: Delete a team.
-  - Options:
-    - `captain_discord_id` (USER): The Discord ID of the team captain.
+- **`/staff delete_team`** - Delete a team
+  - `captain_discord_id` (USER): The Discord ID of the team captain
 
-- `/staff set_team_channel`
-  - Description: Set the channel for the team.
-  - Options:
-    - `team_name` (STRING): The name of the team.
-    - `channel_id` (CHANNEL): The channel to set for the team.
+- **`/staff set_team_channel`** - Set the channel for the team
+  - `team_name` (STRING): The name of the team
+  - `channel_id` (CHANNEL): The channel to set for the team
 
-- `/staff set_captain`
-  - Description: Set a new captain for the team.
-  - Options:
-    - `captain_discord_id` (USER): The Discord ID of the new team captain.
-    - `team_name` (STRING): The name of the team.
+- **`/staff set_captain`** - Set a new captain for the team
+  - `captain_discord_id` (USER): The Discord ID of the new team captain
+  - `team_name` (STRING): The name of the team
 
-- `/staff override_add`
-  - Description: Add a player to the team.
-  - Options:
-    - `riot_id` (STRING): The Riot ID of the player.
-    - `discord_id` (USER): The Discord ID of the player.
-    - `captain_discord_id` (USER): The Discord ID of the team captain.
+- **`/staff set_manager`** - Set a new manager for the team
+  - `manager_discord_id` (USER): The Discord ID of the new manager
+  - `team_name` (STRING): The name of the team
 
-- `/staff override_remove`
-  - Description: Remove a player from the team.
-  - Options:
-    - `player_discord_id` (USER): The Discord ID of the player.
-    - `captain_discord_id` (USER): The Discord ID of the team captain.
+- **`/staff override_add`** - Bypass approval to add a player
+  - `riot_id` (STRING): The Riot ID of the player
+  - `discord_id` (USER): The Discord ID of the player
+  - `captain_discord_id` (USER): The Discord ID of the team captain
 
-- `/staff update_team_info`
-  - Description: Update team information.
-  - Options:
-    - `team_name` (STRING): The current name of the team.
-    - `new_team_name` (STRING): The new name for the team.
-    - `new_captain_discord_id` (USER): The Discord ID of the new team captain.
+- **`/staff override_remove`** - Bypass approval to remove a player
+  - `player_discord_id` (USER): The Discord ID of the player
+  - `captain_discord_id` (USER): The Discord ID of the team captain
 
-- `/staff set_team_role`
-  - Description: Assign a role to the team.
-  - Options:
-    - `team_name` (STRING): The name of the team.
-    - `role_id` (ROLE): The role to assign to the team.
+- **`/staff update_team_info`** - Update team information
+  - `team_name` (STRING): The current name of the team
+  - `new_team_name` (STRING): The new name for the team
+  - `new_captain_discord_id` (USER): The Discord ID of the new team captain
 
-- `/staff set_riot_id`
-  - Description: Set the Riot ID for a player.
-  - Options:
-    - `discord_id` (USER): The Discord ID of the player.
-    - `new_riot_id` (STRING): The new Riot ID of the player.
+- **`/staff set_team_role`** - Assign a role to the team
+  - `team_name` (STRING): The name of the team
+  - `role_id` (ROLE): The role to assign to the team
 
-## License
+- **`/staff set_riot_id`** - Set the Riot ID for a player
+  - `discord_id` (USER): The Discord ID of the player
+  - `new_riot_id` (STRING): The new Riot ID of the player
 
-This project is licensed under the in-house license. See the [LICENSE](LICENSE) file for more information.
+## Architecture
 
-### File Descriptions
+### Core Components
 
-### bot.js
+- **`bot.js`** - Main bot file with Discord client setup and command registration
+- **`src/handlers/`** - Core business logic handlers
+  - `interactionHandler.js` - Discord interaction processing
+  - `mongoHandler.js` - Database operations and models
+  - `playerHandler.js` - Player operations and web scraping
+- **`src/commands/`** - Slash command definitions
+  - `generalCommands.js` - User-level commands
+  - `staffCommands.js` - Administrative commands
+  - `predictionCommands.js` - Prediction and point management
+- **`src/models/`** - MongoDB schemas and models
+  - `Player.js` - Player data model
+  - `Team.js` - Team data model
+  - `Coach.js` - Coach data model
+  - `Prediction.js` - Prediction tracking
+  - `Point.js` - Point system
+- **`src/utils/`** - Utility functions and helpers
+  - `logger.js` - Winston logging configuration
+  - `errorNoticeHelper.js` - Error handling utilities
+  - `openAiHelper.js` - OpenAI API integration
+  - `helperFunctions.js` - Common helper functions
 
-Main bot file that handles the bot's commands and interactions with Discord and OpenAI.
+### Key Features
 
-- **Imports and Setup**: Imports required libraries and modules, including Discord.js, OpenAI, Puppeteer, and Mongoose.
-- **Environment Variables**: Loads environment variables for configuration.
-- **MongoDB Connection**: Connects to the MongoDB database.
-- **Schemas and Models**: Defines MongoDB schemas and models for Points and Predictions.
-- **Discord Client**: Creates a new Discord client with specific intents and partials.
-- **Logger**: Sets up logging using Winston.
-- **Commands**: Defines the bot's commands and registers them with Discord.
-- **Functions**: Includes functions for analyzing stats using OpenAI, fetching player stats, and handling various commands.
-- **Command Handling**: Handles interaction events from Discord and executes appropriate command functions.
+- **Voting System**: Player additions/removals require staff approval through Discord buttons
+- **Role Automation**: Automatic Discord role management based on team membership
+- **Player Verification**: Integration with Tracker.gg and Valorant API for player validation
+- **Proxy Support**: Supports proxy authentication for Tracker.gg scraping
+- **AI Analysis**: OpenAI integration for player behavior analysis
 
-### src/commands/generalCommands.js
+## Dependencies
 
-Contains general commands for the bot, such as checking if a player is a smurf, adding/removing players, and displaying team information.
-
-### src/commands/predictionCommands.js
-
-Handles commands related to predictions and point management.
-
-### src/commands/staffCommands.js
-
-Contains staff-level commands for managing teams and players, such as creating/deleting teams, setting team channels, and assigning roles.
-
-### src/handlers/interactionHandler.js
-
-Handles interactions with the bot, including executing commands and subcommands based on user interactions.
-
-### src/handlers/mongoHandler.js
-
-Handles MongoDB operations, including connecting to the database, managing teams and players, and defining schemas and models.
-
-- **Schemas**: Defines Mongoose schemas for `Player` and `Team`.
-- **Models**: Creates Mongoose models for `Player` and `Team`.
-- **Database Operations**:
-  - `getTeams`: Retrieves all teams with their players.
-  - `getTeamPlayers`: Retrieves players of a specific team.
-  - `createTeam`: Creates a new team.
-  - `setTeamChannel`: Sets the channel ID for a team.
-  - `setTeamRole`: Sets the role ID for a team.
-  - `addPlayerToTeam`: Adds a player to a team.
-  - `getTeamByCaptain`: Retrieves a team by the captain's Discord ID.
-  - `getTeamByPlayer`: Retrieves a team by a player's Discord ID.
-  - `setCaptain`: Sets the captain for a team.
-  - `removePlayerFromTeam`: Removes a player from a team.
-  - `deleteTeam`: Deletes a team.
-  - `connect`: Connects to MongoDB using the provided URI.
-
-### src/handlers/playerHandler.js
-
-Handles player-related operations such as fetching player stats, sending voting messages, and adding/removing players to/from teams.
-
-- **Environment Variables**: Loads environment variables for configuration.
-- **Functions**:
-  - `sendVotingMessage`: Sends a voting message to a specific channel.
-  - `fetchPlayerStats`: Fetches player stats using Puppeteer.
-  - `extractStats`: Extracts relevant stats from the fetched data.
-  - `addPlayerToTeam`: Adds a player to a team.
-  - `removePlayerFromTeam`: Removes a player from a team.
-  - `handleTeamOperation`: Handles dynamic team operations like adding or removing players.
-  - `setCaptain`: Sets a new team captain.
-  - `deleteTeam`: Deletes a team.
-  - `sendTestMessage`: Sends a test message for development purposes.
-
-### src/models/Player.js
-
-Defines the Mongoose schema and model for a Player.
-
-### src/models/Point.js
-
-Defines the Mongoose schema and model for a Point.
-
-### src/models/Prediction.js
-
-Defines the Mongoose schema and model for a Prediction.
-
-### src/models/Team.js
-
-Defines the Mongoose schema and model for a Team.
-
-### src/utils/errorNoticeHelper.js
-
-Helper function for sending error notices to the bot owner.
-
-### src/utils/helperFunctions.js
-
-Contains various helper functions to handle subcommands and check access.
-
-- **checkAccess**: Checks if a user has the required permissions to execute a command.
-- **handleSubcommand**: Handles the execution of subcommands.
-- **handleTeamCreation**: Handles the creation of a new team.
-- **handleTeamDeletion**: Handles the deletion of a team.
-- **handleSetTeamChannel**: Sets the channel for a team.
-- **handleSetCaptain**: Sets a new captain for a team.
-- **handleOverrideAdd**: Adds a player to a team.
-- **handleOverrideRemove**: Removes a player from a team.
-- **handleUpdateTeamInfo**: Updates the information of a team.
-- **handleSetTeamRole**: Sets the role for a team.
-- **handleSetRiotId**: Sets the Riot ID for a player.
-
-### src/utils/logger.js
-
-Sets up logging using Winston.
-
-### src/utils/openAiHelper.js
-
-Contains helper functions for interacting with OpenAI's API.
-
-- **analyzeStats**: Analyzes player stats using OpenAI's API.
+- **Discord.js v14** - Modern Discord bot framework
+- **MongoDB/Mongoose** - Database and ODM
+- **Puppeteer** - Used to scrape player stats from Tracker.gg
+- **OpenAI API** - AI-powered player analysis
+- **Winston** - Comprehensive logging
+- **Jest** - Testing framework
 
 ## Contributing
 
-Feel free to open issues or submit pull requests if you have any suggestions or improvements.
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## Contact
 
-For any questions or inquiries, please contact Devil920 on discord.
+For questions or support, contact **Devil920** on Discord.
+
+## License
+
+This project is licensed under the ISC License. See the [LICENSE](LICENSE) file for details.
+
+---
+
+**EH Overlord** - Powering the Elo Heroes League with automated team management and player verification.
