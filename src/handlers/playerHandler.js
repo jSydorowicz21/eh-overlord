@@ -1,7 +1,7 @@
 const puppeteer = require('puppeteer-extra');
 const stealth = require('puppeteer-extra-plugin-stealth');
 const {EmbedBuilder, Colors, ButtonBuilder, ActionRowBuilder } = require('discord.js');
-const { ButtonStyle } = require('discord-api-types/v10');
+const { ButtonStyle } = require('discord.js');
 const db = require('./mongoHandler');
 const errorNoticeHelper = require("../utils/errorNoticeHelper");
 require('dotenv').config();
@@ -129,17 +129,28 @@ const fetchPlayerStats = async (riotId) => {
         return;
     }
     try {
-        browser = await puppeteer.launch({
+        // Prepare browser launch options
+        const launchOptions = {
             headless: true,
             executablePath: puppeteer.executablePath(), // Ensure the correct executable path is used
             args: [
-                `--proxy-server=${process.env.PROXY_URL}`,
                 '--no-sandbox',
                 '--disable-setuid-sandbox'
             ]
-        });
+        };
+
+        // Add proxy configuration if environment variables are available
+        if (process.env.PROXY_URL && process.env.PROXY_USERNAME && process.env.PROXY_PASSWORD) {
+            launchOptions.args.push(`--proxy-server=${process.env.PROXY_URL}`);
+        }
+
+        browser = await puppeteer.launch(launchOptions);
         const page = await browser.newPage();
-        await page.authenticate({ username: process.env.PROXY_USERNAME, password: process.env.PROXY_PASSWORD });
+        
+        // Authenticate with proxy only if credentials are available
+        if (process.env.PROXY_USERNAME && process.env.PROXY_PASSWORD) {
+            await page.authenticate({ username: process.env.PROXY_USERNAME, password: process.env.PROXY_PASSWORD });
+        }
         await page.goto(`${baseUrl}${encodeURIComponent(riotId)}/segments/season-report?=null`, { waitUntil: 'networkidle2' });
 
         const data = await page.evaluate(() => {

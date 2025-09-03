@@ -11,7 +11,7 @@ const { checkAccess, handleSubcommand, handleTeamCreation, handleTeamDeletion, h
     handleRemoveCoach
 } = require('../utils/helperFunctions');
 const {ButtonBuilder, ActionRowBuilder, EmbedBuilder, Colors} = require("discord.js");
-const {ButtonStyle} = require("discord-api-types/v10");
+const ButtonStyle = require("discord.js").ButtonStyle;
 
 const handleInteraction = async (interaction, client) => {
     if (!interaction.isCommand()) return;
